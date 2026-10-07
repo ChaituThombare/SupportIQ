@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="SupportIQ.AI/SupportIQ.AI.csproj" />
+  <Project Path="SupportIQ.API/SupportIQ.API.csproj" />
+  <Project Path="SupportIQ.Application/SupportIQ.Application.csproj" />
+  <Project Path="SupportIQ.Domain/SupportIQ.Domain.csproj" />
+  <Project Path="SupportIQ.Infrastructure/SupportIQ.Infrastructure.csproj" />
+  <Project Path="SupportIQ.Tests/SupportIQ.Tests.csproj" />
+</Solution>
