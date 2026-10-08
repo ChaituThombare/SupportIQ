@@ -1,5 +1,74 @@
-*.pdf
-*.txt
-*.vs
+# =========================
+# Visual Studio
+# =========================
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# =========================
+# .NET Build Output
+# =========================
 **/bin/
 **/obj/
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Local configuration
+# =========================
+appsettings.Local.json
+
+# =========================
+# Azure / Publish Profiles
+# =========================
+**/Properties/PublishProfiles/
+
+# =========================
+# Test / Coverage Output
+# =========================
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# =========================
+# Node / React
+# =========================
+node_modules/
+dist/
+build/
+.vite/
+
+# =========================
+# Temporary / OS Files
+# =========================
+*.tmp
+*.temp
+*.swp
+.DS_Store
+Thumbs.db
+
+# =========================
+# Documents not required in repo
+# =========================
+*.pdf
+*.txt
+
+# =========================
+# Local SQL Server files
+# =========================
+*.mdf
+*.ldf
+*.bak
