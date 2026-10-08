@@ -15,7 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Data\" />
     <Folder Include="Serivces\" />
     <Folder Include="Repositories\" />
   </ItemGroup>
