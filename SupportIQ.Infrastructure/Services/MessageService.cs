@@ -38,9 +38,14 @@ namespace SupportIQ.Infrastructure.Services
                 throw new UnauthorizedAccessException("You do not have access to this ticket conversation.");
             }
 
-            return await _context.Messages
-                .AsNoTracking()
-                .Where(m => m.TicketId == ticketId)
+            var query = _context.Messages.AsNoTracking()
+                .Where(m => m.TicketId == ticketId);
+
+            if(role == "Customer")
+            {
+                query = query.Where(m => !m.IsAISuggested);
+            }
+            return await query
                 .OrderBy(m => m.CreatedOn)
                 .ThenBy(m => m.MessageId)
                 .Select(m => new MessageResponse

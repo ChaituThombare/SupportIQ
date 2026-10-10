@@ -15,11 +15,13 @@ namespace SupportIQ.API.Controllers
     {
         private readonly ITicketService _ticketService;
         private readonly IMessageService _messageService;
+        private readonly IAITicketService _aITicketService;
 
-        public TicketController(ITicketService ticketService, IMessageService messageService)
+        public TicketController(ITicketService ticketService, IMessageService messageService, IAITicketService aITicketService)
         {
             _ticketService = ticketService;
             _messageService = messageService;
+            _aITicketService = aITicketService;
         }
 
         private int? GetCurrentUserId()
@@ -162,7 +164,7 @@ namespace SupportIQ.API.Controllers
             }
         }
 
-        // AGENT / AGENT
+        // AGENT / ADMIN
         [Authorize(Roles = "Agent,Admin")]
         [HttpPut("{id:int}/status")]
         public async Task<IActionResult> UpdateTicketStatus(int id, UpdateTicketStatusRequest request)
@@ -347,6 +349,48 @@ namespace SupportIQ.API.Controllers
             catch(InvalidOperationException ex)
             {
                 return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
+
+        // AGENT / ADMIN
+        [Authorize(Roles = "Agent,Admin")]
+        [HttpPost("{id:int}/ai-analysis")]
+        public async Task<IActionResult> AnalyzeTicket(int id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _aITicketService.AnalyzeTicketAsync(id, cancellationToken);
+
+                if(result == null)
+                {
+                    return NotFound(new
+                    {
+                        message = "Ticket not found."
+                    });
+                }
+
+                return Ok(result);
+            }
+            catch (HttpRequestException)
+            {
+                return StatusCode(503, new
+                {
+                    message = "AI service is cuurrently unavailable. The ticket remains saved."
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(503, new
+                {
+                    message = "AI analysis was cancelled or timed out. The ticket remains saved."
+                });
+            }
+            catch(InvalidOperationException ex)
+            {
+                return StatusCode(503, new
                 {
                     message = ex.Message
                 });

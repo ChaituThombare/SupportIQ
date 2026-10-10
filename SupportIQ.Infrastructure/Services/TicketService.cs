@@ -1,4 +1,5 @@
 ﻿using SupportIQ.Application.Interfaces;
+using System.Net.Http;
 using Microsoft.EntityFrameworkCore;
 using SupportIQ.Infrastructure.Data;
 using SupportIQ.Domain.Entities;
@@ -9,10 +10,12 @@ namespace SupportIQ.Infrastructure.Services
     public class TicketService : ITicketService
     {
         private readonly SupportIQDbContext _context;
+        private readonly IAITicketService _aiTicketService;
 
-        public TicketService(SupportIQDbContext context)
+        public TicketService(SupportIQDbContext context, IAITicketService aiTicketService)
         {
             _context = context;
+            _aiTicketService = aiTicketService;
         }
 
         public async Task<TicketResponse> CreateTicketAsync(CreateTicketRequest request, int customerId)
@@ -51,6 +54,14 @@ namespace SupportIQ.Infrastructure.Services
             _context.Tickets.Add(ticket);
 
             await _context.SaveChangesAsync();
+
+            try
+            {
+                await _aiTicketService.AnalyzeTicketAsync(ticket.TicketId);
+            }
+            catch(HttpRequestException) { }
+            catch (InvalidOperationException) { }
+            catch (OperationCanceledException) { }
 
             return MapToResponse(ticket);
         }

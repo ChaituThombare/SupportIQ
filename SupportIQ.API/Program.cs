@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SupportIQ.AI;
 using SupportIQ.Application.Interfaces;
 using SupportIQ.Infrastructure.Data;
 using SupportIQ.Infrastructure.Services;
@@ -49,6 +50,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddHttpClient<IAIProvider, GeminiProvider>();
+builder.Services.AddScoped<IAITicketService, AITicketService>();
 
 var jwtKey = builder.Configuration["Jwt:Key"];
 if (string.IsNullOrWhiteSpace(jwtKey))
