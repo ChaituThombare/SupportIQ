@@ -1,0 +1,141 @@
+<div class="details-page">
+  <a routerLink="/customer/dashboard" class="back-link">
+    <i class="bi bi-arrow-left"></i>
+    Back to Dashboard
+  </a>
+
+  @if (ticket; as currentTicket) {
+    <header class="details-header">
+      <div>
+        <div class="ticket-reference">{{ currentTicket.id }}</div>
+        <h1>{{ currentTicket.subject }}</h1>
+        <p class="header-description">
+          Created {{ currentTicket.createdAt }}
+        </p>
+      </div>
+
+      <span class="status-badge" [class]="getStatusClass(currentTicket.status)">
+        {{ currentTicket.status }}
+      </span>
+    </header>
+
+    <div class="details-layout">
+      <main class="details-main">
+        <section class="details-card">
+          <div class="section-heading">
+            <div class="section-icon">
+              <i class="bi bi-file-text"></i>
+            </div>
+            <h2>Ticket Description</h2>
+          </div>
+
+          <p class="description-text">{{ currentTicket.description }}</p>
+
+          <div class="ticket-metadata">
+            <div>
+              <span class="metadata-label">Category</span>
+              <strong>{{ currentTicket.category }}</strong>
+            </div>
+            <div>
+              <span class="metadata-label">Priority</span>
+              <strong [class]="getPriorityClass(currentTicket.priority)">
+                {{ currentTicket.priority }}
+              </strong>
+            </div>
+            <div>
+              <span class="metadata-label">Last Updated</span>
+              <strong>{{ currentTicket.updatedAt }}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="details-card conversation-card">
+          <div class="section-heading">
+            <div class="section-icon">
+              <i class="bi bi-chat-left-text"></i>
+            </div>
+            <div>
+              <h2>Conversation</h2>
+              <p>Messages associated with this support ticket.</p>
+            </div>
+          </div>
+
+          <div class="conversation-list">
+            @for (message of messages; track $index) {
+              <article class="message-item">
+                <div class="message-avatar"
+                     [class.agent-avatar]="message.role === 'Agent'">
+                  {{ message.sender.charAt(0) }}
+                </div>
+
+                <div class="message-content">
+                  <div class="message-header">
+                    <strong>{{ message.sender }}</strong>
+                    <span class="role-label">{{ message.role }}</span>
+                    <time>{{ message.timestamp }}</time>
+                  </div>
+                  <p>{{ message.message }}</p>
+                </div>
+              </article>
+            }
+          </div>
+
+          <div class="conversation-notice">
+            <i class="bi bi-info-circle"></i>
+            Replies will be enabled when messaging is connected to the backend.
+          </div>
+        </section>
+      </main>
+
+      <aside class="details-sidebar">
+        <section class="details-card">
+          <h2>Ticket Information</h2>
+
+          <div class="info-row">
+            <span>Ticket ID</span>
+            <strong>{{ currentTicket.id }}</strong>
+          </div>
+
+          <div class="info-row">
+            <span>Status</span>
+            <strong>{{ currentTicket.status }}</strong>
+          </div>
+
+          <div class="info-row">
+            <span>Priority</span>
+            <strong>{{ currentTicket.priority }}</strong>
+          </div>
+
+          <div class="info-row">
+            <span>Created</span>
+            <strong>{{ currentTicket.createdAt }}</strong>
+          </div>
+        </section>
+
+        <section class="details-card support-card">
+          <div class="support-icon">
+            <i class="bi bi-headset"></i>
+          </div>
+          <h3>Need more help?</h3>
+          <p>
+            Your ticket history and future replies will be available here.
+          </p>
+          <a routerLink="/customer/dashboard" class="dashboard-link">
+            Return to Dashboard
+          </a>
+        </section>
+      </aside>
+    </div>
+  } @else {
+    <section class="details-card not-found">
+      <i class="bi bi-ticket-perforated"></i>
+      <h1>Ticket not found</h1>
+      <p>
+        No demo ticket matches ID {{ ticketId }}.
+      </p>
+      <a routerLink="/customer/dashboard" class="dashboard-link">
+        Back to Dashboard
+      </a>
+    </section>
+  }
+</div>

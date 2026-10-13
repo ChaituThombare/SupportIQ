@@ -1,0 +1,241 @@
+<div class="auth-page container-fluid">
+  <div class="row min-vh-100">
+
+    <!-- Left brand panel -->
+    <section
+      class="col-lg-6 d-none d-lg-flex brand-panel align-items-center justify-content-center"
+    >
+      <div class="brand-content">
+        <div class="brand-logo mb-5">
+          <i class="bi bi-headset"></i>
+          <span>Support<span class="brand-accent">IQ</span></span>
+        </div>
+
+        <span class="brand-label">INTELLIGENT CUSTOMER SUPPORT</span>
+
+        <h1 class="brand-heading mt-4">
+          Better support.<br />
+          Smarter solutions.
+        </h1>
+
+        <p class="brand-description mt-4">
+          One place to manage support requests, collaborate with your team,
+          and use AI-assisted insights to resolve customer issues.
+        </p>
+
+        <div class="brand-feature mt-5">
+          <span class="feature-icon">
+            <i class="bi bi-stars"></i>
+          </span>
+          <div>
+            <h2>AI-assisted support</h2>
+            <p>Helpful suggestions, with people in control.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Authentication panel -->
+    <section
+      class="col-12 col-lg-6 auth-panel d-flex align-items-center justify-content-center"
+    >
+      <div class="auth-card">
+
+        <div class="mobile-brand d-lg-none mb-5">
+          <i class="bi bi-headset"></i>
+          <span>Support<span class="brand-accent">IQ</span></span>
+        </div>
+
+        <div class="mb-4">
+          <span class="welcome-label">
+            {{ isLogin ? 'WELCOME BACK' : 'GET STARTED' }}
+          </span>
+
+          <h2 class="auth-heading mt-2">
+            {{ isLogin ? 'Sign in to your account' : 'Create your account' }}
+          </h2>
+
+          <p class="auth-subtitle mt-2">
+            {{
+              isLogin
+                ? 'Enter your details to continue to SupportIQ.'
+                : 'Create an account to get help with your support requests.'
+            }}
+          </p>
+        </div>
+
+        <div class="auth-switch d-flex p-1 mb-4">
+          <button
+            type="button"
+            class="switch-button flex-fill"
+            [class.active]="isLogin"
+            [attr.aria-pressed]="isLogin"
+            (click)="switchMode('login')"
+          >
+            Login
+          </button>
+
+          <button
+            type="button"
+            class="switch-button flex-fill"
+            [class.active]="!isLogin"
+            [attr.aria-pressed]="!isLogin"
+            (click)="switchMode('register')"
+          >
+            Register
+          </button>
+        </div>
+
+        <form [formGroup]="authForm" (ngSubmit)="submitForm()" novalidate>
+
+          @if (!isLogin) {
+            <div class="mb-3">
+              <label for="name" class="form-label">Full name</label>
+
+              <input
+                id="name"
+                type="text"
+                class="form-control auth-input"
+                [class.is-invalid]="
+                  authForm.controls.name.touched &&
+                  authForm.controls.name.invalid
+                "
+                formControlName="name"
+                placeholder="Enter your full name"
+                autocomplete="name"
+              />
+
+              @if (
+                authForm.controls.name.touched &&
+                authForm.controls.name.hasError('required')
+              ) {
+                <div class="invalid-feedback">
+                  Full name is required.
+                </div>
+              } @else if (authForm.controls.name.touched && authForm.controls.name.hasError('invalidName')) {
+                <div class="text-danger small mt-1">
+                  Enter at least 2 non-whitespace characters.
+                </div>
+              }
+            </div>
+          }
+
+          <div class="mb-3">
+            <label for="email" class="form-label">Email address</label>
+
+            <input
+              id="email"
+              type="email"
+              class="form-control auth-input"
+              [class.is-invalid]="
+                authForm.controls.email.touched &&
+                authForm.controls.email.invalid
+              "
+              formControlName="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              (input)="clearMessage()"
+            />
+
+            @if (
+              authForm.controls.email.touched &&
+              authForm.controls.email.hasError('required')
+            ) {
+              <div class="invalid-feedback">
+                Email address is required.
+              </div>
+            } @else if (
+              authForm.controls.email.touched &&
+              authForm.controls.email.hasError('email')
+            ) {
+              <div class="invalid-feedback">
+                Enter a valid email address.
+              </div>
+            }
+          </div>
+
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            
+            <div class="input-group">
+                <input
+                id="password"
+                [type]="showPassword ? 'text' : 'password'"
+                class="form-control auth-input"
+                [class.is-invalid]="
+                    authForm.controls.password.touched &&
+                    authForm.controls.password.invalid
+                    "
+
+                formControlName="password"
+                placeholder="Enter your password"
+                [autocomplete]="
+                    isLogin ? 'current-password' : 'new-password'
+                "
+                (input)="clearMessage()"
+                />
+
+                <button
+                type="button"
+                class="btn btn-outline-secondary password-toggle"
+                (click)="togglePasswordVisibility()"
+                [attr.aria-label]="
+                    showPassword ? 'Hide password' : 'Show password'
+                    "
+                [attr.aria-pressed]="showPassword"
+                >
+                    <i
+                        class="bi"
+                        [class.bi-eye]="!showPassword"
+                        [class.bi-eye-slash]="showPassword"
+                        aria-hidden="true"
+                    ></i>
+                </button>
+            </div>
+
+            @if (
+              authForm.controls.password.touched &&
+              authForm.controls.password.hasError('required')
+            ) {
+              <div class="text-danger small mt-1">
+                Password is required.
+              </div>
+            } @else if (
+              authForm.controls.password.touched &&
+              authForm.controls.password.hasError('minlength')
+            ) {
+              <div class="text-danger small mt-1">
+                Password must contain at least 8 characters.
+              </div>
+            }
+          </div>
+
+          @if (message) {
+            <div class="alert alert-success py-2 small" role="status">
+              {{ message }}
+            </div>
+          }
+
+          <button type="submit" class="btn auth-submit w-100 mt-3">
+            {{ isLogin ? 'Sign in' : 'Create account' }}
+            <i
+              class="bi ms-2"
+              [class.bi-arrow-right]="true"
+            ></i>
+          </button>
+
+        </form>
+
+        <p class="auth-footer text-center mt-4 mb-0">
+          <i class="bi bi-shield-check me-1"></i>
+          Secure support for every customer.
+        </p>
+
+        <p class="auth-terms text-center mt-4 mb-0">
+          By continuing, you agree to our Terms of Service and Privacy Policy.
+        </p>
+
+      </div>
+    </section>
+  </div>
+</div>

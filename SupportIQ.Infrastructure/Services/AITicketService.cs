@@ -43,9 +43,9 @@ namespace SupportIQ.Infrastructure.Services
                 "Low", "Medium", "High", "Critical"
             };
 
-            var categoryName = allowedCategories.FirstOrDefault(c => c.Equals(result.Category.Trim(), StringComparison.OrdinalIgnoreCase)) ?? "Other";
+            var categoryName = allowedCategories.FirstOrDefault(c => c.Equals(result.Category?.Trim(), StringComparison.OrdinalIgnoreCase)) ?? "Other";
 
-            var priority = allowedPriorities.FirstOrDefault(p => p.Equals(result.Priority.Trim(), StringComparison.OrdinalIgnoreCase)) ?? "Low";
+            var priority = allowedPriorities.FirstOrDefault(p => p.Equals(result.Priority?.Trim(), StringComparison.OrdinalIgnoreCase)) ?? "Low";
 
             var suggestedResponse = result.SuggestedResponse?.Trim();
 
@@ -54,8 +54,11 @@ namespace SupportIQ.Infrastructure.Services
                 throw new InvalidOperationException("AI did not generate a usable suggested response.");
             }
 
+            var databaseCategoryName = categoryName == "Other"
+                    ? "Others" : categoryName;
+
             var categoryId = await _context.Categories
-                .Where(c => c.CategoryName == categoryName && c.IsActive)
+                .Where(c => c.CategoryName == databaseCategoryName && c.IsActive)
                 .Select(c => (int?)c.CategoryId)
                 .FirstOrDefaultAsync(cancellationToken);
 

@@ -1,0 +1,178 @@
+<div class="dashboard-shell">
+  <aside class="sidebar">
+    <a class="brand" href="/customer/dashboard">
+      <span class="brand-icon"><i class="bi bi-headset"></i></span>
+      <span>Support<span class="brand-accent">IQ</span></span>
+    </a>
+
+    <div class="sidebar-label">WORKSPACE</div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item active" href="/customer/dashboard">
+        <i class="bi bi-grid-1x2"></i>
+        Dashboard
+      </a>
+      <a class="nav-item" href="/customer/dashboard">
+        <i class="bi bi-ticket-perforated"></i>
+        My Tickets
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="help-card">
+        <i class="bi bi-chat-square-text"></i>
+        <h6>Need help?</h6>
+        <p>Create a ticket and our team will assist you.</p>
+      </div>
+      <button type="button" class="logout-button">
+        <i class="bi bi-box-arrow-left"></i>
+        Sign out
+      </button>
+    </div>
+  </aside>
+
+  <main class="dashboard-main">
+    <header class="topbar">
+      <div>
+        <div class="breadcrumb-text">Workspace / Dashboard</div>
+        <h2>Customer Dashboard</h2>
+      </div>
+
+      <div class="user-profile">
+        <div class="avatar">{{ customerName.charAt(0) }}</div>
+        <div class="user-info">
+          <strong>{{ customerName }}</strong>
+          <span>Customer</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="welcome-section">
+      <div>
+        <p class="eyebrow">YOUR SUPPORT OVERVIEW</p>
+        <h1>Welcome back, {{ customerName }}.</h1>
+        <p class="welcome-description">
+          Track your support requests and stay updated on their progress.
+        </p>
+      </div>
+
+      <a routerLink="/customer/ticket/new"      class="create-ticket-button">
+        <i class="bi bi-plus-lg"></i>
+        Create Ticket
+      </a>
+    </section>
+
+    @if (showCreateTicketNotice) {
+      <div class="demo-notice" role="status">
+        Ticket creation will be available when the Create Ticket module is implemented.
+        <button type="button" class="notice-close"
+          aria-label="Dismiss notice"
+          (click)="showCreateTicketNotice = false">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    }
+
+    <section class="summary-grid">
+      <article class="summary-card">
+        <div class="summary-top">
+          <span>Total Tickets</span>
+          <span class="summary-icon icon-blue"><i class="bi bi-ticket"></i></span>
+        </div>
+        <h3>{{ totalTickets }}</h3>
+        <p>All your support requests</p>
+      </article>
+
+      <article class="summary-card">
+        <div class="summary-top">
+          <span>Open</span>
+          <span class="summary-icon icon-orange"><i class="bi bi-inbox"></i></span>
+        </div>
+        <h3>{{ openTickets }}</h3>
+        <p>Awaiting support</p>
+      </article>
+
+      <article class="summary-card">
+        <div class="summary-top">
+          <span>In Progress</span>
+          <span class="summary-icon icon-purple"><i class="bi bi-arrow-repeat"></i></span>
+        </div>
+        <h3>{{ inProgressTickets }}</h3>
+        <p>Being worked on</p>
+      </article>
+
+      <article class="summary-card">
+        <div class="summary-top">
+          <span>Resolved</span>
+          <span class="summary-icon icon-green"><i class="bi bi-check2-circle"></i></span>
+        </div>
+        <h3>{{ resolvedTickets }}</h3>
+        <p>Successfully completed</p>
+      </article>
+    </section>
+
+    <section class="tickets-section">
+      <div class="section-heading">
+        <div>
+          <h3>Recent Tickets</h3>
+          <p>Review the latest activity on your requests.</p>
+        </div>
+        <button type="button" class="view-all-button"
+          (click)="showAllTickets = !showAllTickets">
+          {{ showAllTickets ? 'Show recent' : 'View all' }}
+          <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+
+      <div class="table-responsive ticket-table-wrapper">
+        <table class="table ticket-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Category</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Last Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (ticket of (showAllTickets ? tickets : tickets.slice(0, 3)); track ticket.id) {
+              <tr>
+                <td>
+                  <div class="ticket-id">{{ ticket.id }}</div>
+                  <a class="ticket-subject ticket-subject-link" [routerLink]="['/customer/tickets',ticket.id]" >
+                    {{ ticket.subject }}
+                  </a>
+                </td>
+                <td>{{ ticket.category }}</td>
+                <td>
+                  <span class="priority-label" [ngClass]="getPriorityClass(ticket.priority)">
+                    {{ ticket.priority }}
+                  </span>
+                </td>
+                <td>
+                  <span class="status-badge" [ngClass]="getStatusClass(ticket.status)">
+                    {{ ticket.status }}
+                  </span>
+                </td>
+                <td class="updated-cell">{{ ticket.updatedAt }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (tickets.length === 0) {
+        <div class="empty-state">
+          <i class="bi bi-inbox"></i>
+          <h4>No tickets yet</h4>
+          <p>Your support requests will appear here.</p>
+        </div>
+      }
+    </section>
+
+    <footer class="dashboard-footer">
+      SupportIQ <span>·</span> Customer Support Portal
+    </footer>
+  </main>
+</div>

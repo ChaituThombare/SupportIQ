@@ -1,6 +1,7 @@
 ﻿using SupportIQ.Application.Interfaces;
 using System.Net.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SupportIQ.Infrastructure.Data;
 using SupportIQ.Domain.Entities;
 using SupportIQ.Application.DTOs.Tickets;
@@ -11,11 +12,13 @@ namespace SupportIQ.Infrastructure.Services
     {
         private readonly SupportIQDbContext _context;
         private readonly IAITicketService _aiTicketService;
+        private readonly ILogger<TicketService> _logger;
 
-        public TicketService(SupportIQDbContext context, IAITicketService aiTicketService)
+        public TicketService(SupportIQDbContext context, IAITicketService aiTicketService, ILogger<TicketService> logger)
         {
             _context = context;
             _aiTicketService = aiTicketService;
+            _logger = logger;
         }
 
         public async Task<TicketResponse> CreateTicketAsync(CreateTicketRequest request, int customerId)
@@ -59,9 +62,22 @@ namespace SupportIQ.Infrastructure.Services
             {
                 await _aiTicketService.AnalyzeTicketAsync(ticket.TicketId);
             }
-            catch(HttpRequestException) { }
-            catch (InvalidOperationException) { }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch(HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "AI provider unavailable for ticket {TicketId}. Ticket creation succeeded.", ticket.TicketId);
+            }
+            catch(InvalidOperationException ex) 
+            {
+                _logger.LogWarning(
+                    ex,
+                    "AI analysis failed for ticket {TicketId}. " +
+                    "The ticket was created successfully.",
+                    ticket.TicketId);
+            }
 
             return MapToResponse(ticket);
         }
@@ -160,7 +176,7 @@ namespace SupportIQ.Infrastructure.Services
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.UserId == agentId && u.IsActive && u.Role.RoleName == "Agent");
 
-            if(agent == null)
+            if(agent is null)
             {
                 throw new InvalidOperationException("Agent not found.");
             }
@@ -168,9 +184,14 @@ namespace SupportIQ.Infrastructure.Services
             var ticket = await _context.Tickets
                 .FirstOrDefaultAsync(t => t.TicketId == ticketId);
 
-            if(ticket == null)
+            if(ticket is null)
             {
                 return null;
+            }
+
+            if(ticket.Status is "Resolved" or "Closed")
+            {
+                throw new InvalidOperationException("Ticket is already resolved or closed.");
             }
 
             ticket.AssignedAgentId = agentId;
