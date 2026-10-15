@@ -1,0 +1,212 @@
+
+<div class="management-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">ADMINISTRATION / TEAM</span>
+      <h1>Agent Management</h1>
+      <p>Manage your support team, monitor availability and review workloads.</p>
+    </div>
+
+    <span class="demo-label">
+      <span></span>
+      Demo data
+    </span>
+  </header>
+
+  <!-- Overview -->
+  <section class="overview-grid">
+    <article class="overview-card">
+      <div class="overview-top">
+        <span>Total Agents</span>
+        <i class="bi bi-people icon-blue"></i>
+      </div>
+      <h2>{{ totalAgents }}</h2>
+      <p>Support team members</p>
+    </article>
+
+    <article class="overview-card">
+      <div class="overview-top">
+        <span>Available</span>
+        <i class="bi bi-person-check icon-green"></i>
+      </div>
+      <h2>{{ availableAgents }}</h2>
+      <p>Ready to handle tickets</p>
+    </article>
+
+    <article class="overview-card">
+      <div class="overview-top">
+        <span>Busy</span>
+        <i class="bi bi-clock-history icon-orange"></i>
+      </div>
+      <h2>{{ busyAgents }}</h2>
+      <p>Currently marked busy</p>
+    </article>
+
+    <article class="overview-card">
+      <div class="overview-top">
+        <span>Active Tickets</span>
+        <i class="bi bi-ticket-perforated icon-purple"></i>
+      </div>
+      <h2>{{ totalActiveTickets }}</h2>
+      <p>Across listed agents</p>
+    </article>
+  </section>
+
+  <!-- Team table -->
+  <section class="team-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Support Team</h2>
+        <p>Search agents and update their demo settings.</p>
+      </div>
+
+      <span class="result-count">{{ filteredAgents.length }} agents</span>
+    </div>
+
+    <div class="filters">
+      <div class="search-field">
+        <i class="bi bi-search"></i>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          placeholder="Search by name, email or agent ID..."
+          aria-label="Search agents"
+        />
+      </div>
+
+      <select [(ngModel)]="roleFilter" aria-label="Filter by role">
+        <option value="All">All roles</option>
+        <option value="Senior Agent">Senior Agent</option>
+        <option value="Support Agent">Support Agent</option>
+      </select>
+
+      <select [(ngModel)]="availabilityFilter" aria-label="Filter by availability">
+        <option value="All">All availability</option>
+        <option value="Available">Available</option>
+        <option value="Busy">Busy</option>
+        <option value="Away">Away</option>
+      </select>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table agent-table align-middle">
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>Role</th>
+            <th>Availability</th>
+            <th>Active Tickets</th>
+            <th>Workload</th>
+            <th>Resolved</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let agent of filteredAgents; trackBy: trackByAgentId">
+            <td>
+              <div class="agent-identity">
+                <div class="agent-avatar">
+                  {{ agent.name.charAt(0) }}
+                </div>
+
+                <div class="agent-details">
+                  <strong>{{ agent.name }}</strong>
+                  <span>{{ agent.id }}</span>
+                  <small>{{ agent.email }}</small>
+                </div>
+              </div>
+            </td>
+
+            <td>
+              <select
+                class="role-select"
+                [ngModel]="agent.role"
+                (ngModelChange)="changeRole(agent, $event)"
+                [attr.aria-label]="'Change role for ' + agent.name"
+              >
+                <option value="Support Agent">Support Agent</option>
+                <option value="Senior Agent">Senior Agent</option>
+              </select>
+            </td>
+
+            <td>
+              <select
+                class="availability-select"
+                [ngModel]="agent.availability"
+                (ngModelChange)="changeAvailability(agent, $event)"
+                [ngClass]="agent.availability.toLowerCase()"
+                [attr.aria-label]="'Change availability for ' + agent.name"
+              >
+                <option value="Available">Available</option>
+                <option value="Busy">Busy</option>
+                <option value="Away">Away</option>
+              </select>
+            </td>
+
+            <td>
+              <strong class="ticket-number">{{ agent.activeTickets }}</strong>
+              <span class="capacity-label">of {{ agent.capacity }}</span>
+            </td>
+
+            <td class="workload-cell">
+              <div class="workload-label">
+                <span>{{ getWorkload(agent) }}%</span>
+              </div>
+
+              <div
+                class="progress workload-track"
+                role="progressbar"
+                [attr.aria-valuenow]="getWorkload(agent)"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                [attr.aria-label]="agent.name + ' workload'"
+              >
+                <div
+                  class="progress-bar"
+                  [class.workload-high]="getWorkload(agent) >= 75"
+                  [style.width.%]="getWorkload(agent)"
+                ></div>
+              </div>
+            </td>
+
+            <td>
+              <span class="resolved-number">
+                <i class="bi bi-check-circle"></i>
+                {{ agent.resolvedTickets }}
+              </span>
+            </td>
+          </tr>
+
+          <tr *ngIf="filteredAgents.length === 0">
+            <td colspan="6" class="empty-state">
+              <i class="bi bi-people"></i>
+              <h3>No agents found</h3>
+              <p>Try another search term or filter.</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="table-footer">
+      <span>Showing {{ filteredAgents.length }} of {{ totalAgents }} agents</span>
+      <span>{{ totalResolvedTickets }} total resolved tickets in demo data</span>
+    </footer>
+  </section>
+
+  <!-- Management notes -->
+  <section class="management-note">
+    <div class="note-icon">
+      <i class="bi bi-info-circle"></i>
+    </div>
+
+    <div>
+      <h3>About agent controls</h3>
+      <p>
+        Role and availability changes currently update only this page's local mock data.
+        Real account permissions, persistence and workload synchronization will be handled
+        through the backend during integration.
+      </p>
+    </div>
+  </section>
+</div>

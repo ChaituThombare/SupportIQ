@@ -4,7 +4,22 @@
     Back to Dashboard
   </a>
 
-  @if (ticket; as currentTicket) {
+  @if(loading) {
+    <section class="details-card loading-state" aria-live="polite">
+      <i class="bi bi-arrow-repeat loading-icon"></i>
+      <h2>Loading ticket details...</h2>
+      <p>Please wait while we fetch the ticket information.</p>
+    </section>
+  }@else if(errorMessage){
+    <section class="details-card not-found" role="alert">
+      <i class="bi bi-exclamation-circle"></i>
+      <h1>Unable to load ticket</h1>
+      <p>{{ errorMessage }}</p>
+      <a routerLink="/customer/dashboard" class="dashboard-link">
+        Back to Dashboard
+      </a>
+    </section>
+  }@else if (ticket; as currentTicket) {
     <header class="details-header">
       <div>
         <div class="ticket-reference">{{ currentTicket.id }}</div>
@@ -59,31 +74,60 @@
               <p>Messages associated with this support ticket.</p>
             </div>
           </div>
-
-          <div class="conversation-list">
-            @for (message of messages; track $index) {
-              <article class="message-item">
-                <div class="message-avatar"
-                     [class.agent-avatar]="message.role === 'Agent'">
-                  {{ message.sender.charAt(0) }}
-                </div>
-
-                <div class="message-content">
-                  <div class="message-header">
-                    <strong>{{ message.sender }}</strong>
-                    <span class="role-label">{{ message.role }}</span>
-                    <time>{{ message.timestamp }}</time>
+          
+          @if(loadingMessages){
+            <p>Loading conversation...</p>
+          }@else if (messageError) {
+            <p class="message-error" role="alert">{{ messageError }}</p>
+          } @else if (messages.length === 0) {
+            <p class="empty-conversation">
+              No messages yet. Send a reply to start the conversation.
+            </p>
+          } @else {
+            <div class="conversation-list">
+              @for (message of messages; track message.messageId) {
+                <article class="message-item">
+                  <div class="message-avatar" [class.agent-avatar]="message.senderType !== 'Customer'">
+                    {{ message.senderType }}
                   </div>
-                  <p>{{ message.message }}</p>
-                </div>
-              </article>
-            }
-          </div>
 
-          <div class="conversation-notice">
-            <i class="bi bi-info-circle"></i>
-            Replies will be enabled when messaging is connected to the backend.
-          </div>
+                  <div class="message-content">
+                    <div class="message-header">
+                      <strong>{{ message.senderType }}</strong>
+                      <time>{{ message.createdOn | date:'medium' }}</time>
+                    </div>
+                    
+                    <p>{{ message.messageText }}</p>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+
+          @if (ticket?.status?.toLowerCase() !== 'closed') {
+            <form class="reply-form" (ngSubmit)="sendReply()">
+              <label for="replyMessage">Your reply</label>
+              <textarea
+                id="replyMessage"
+                name="replyMessage"
+                [(ngModel)]="messageText"
+                maxlength="5000"
+                rows="3"
+                required
+                [disabled]="sendingMessage"
+                placeholder="Type your message...">
+              </textarea>
+
+              <button
+                type="submit"
+                class="reply-button"
+                [disabled]="sendingMessage || !messageText.trim()">
+                {{ sendingMessage ? 'Sending...' : 'Send Reply' }}
+              </button>
+            </form>
+          } @else {
+            <p>This ticket is closed and cannot receive new messages.</p>
+          }
         </section>
       </main>
 
@@ -118,7 +162,7 @@
           </div>
           <h3>Need more help?</h3>
           <p>
-            Your ticket history and future replies will be available here.
+            Keep your ticket ID handy when contacting the support team.
           </p>
           <a routerLink="/customer/dashboard" class="dashboard-link">
             Return to Dashboard

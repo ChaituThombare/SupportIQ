@@ -1,0 +1,217 @@
+
+<div class="reports-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">ADMINISTRATION / INSIGHTS</span>
+      <h1>Reports & Analytics</h1>
+      <p>Understand ticket trends, resolution activity and team performance.</p>
+    </div>
+
+    <select
+      class="period-select"
+      [(ngModel)]="selectedPeriod"
+      aria-label="Select reporting period"
+    >
+      <option *ngFor="let period of periods" [value]="period.value">
+        {{ period.label }}
+      </option>
+    </select>
+  </header>
+
+  <div class="demo-notice">
+    <i class="bi bi-info-circle"></i>
+    {{ getPeriodDescription() }}. These figures are mock data, not live database reports.
+  </div>
+
+  <!-- KPI cards -->
+  <section class="kpi-grid">
+    <article class="kpi-card">
+      <div class="kpi-label">
+        <span>Tickets Created</span>
+        <i class="bi bi-ticket-perforated icon-blue"></i>
+      </div>
+      <h2>{{ totalCreated }}</h2>
+      <p>Across the displayed sample days</p>
+    </article>
+
+    <article class="kpi-card">
+      <div class="kpi-label">
+        <span>Tickets Resolved</span>
+        <i class="bi bi-check2-circle icon-green"></i>
+      </div>
+      <h2>{{ totalResolved }}</h2>
+      <p>Across the displayed sample days</p>
+    </article>
+
+    <article class="kpi-card">
+      <div class="kpi-label">
+        <span>Resolution Ratio</span>
+        <i class="bi bi-graph-up-arrow icon-purple"></i>
+      </div>
+      <h2>{{ resolutionRate }}%</h2>
+      <p>Resolved count compared with created count</p>
+    </article>
+
+    <article class="kpi-card">
+      <div class="kpi-label">
+        <span>Daily Average</span>
+        <i class="bi bi-calendar-week icon-orange"></i>
+      </div>
+      <h2>{{ averageDailyCreated }}</h2>
+      <p>Tickets created per sample day</p>
+    </article>
+  </section>
+
+  <!-- Ticket trend chart -->
+  <section class="report-panel trend-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Ticket Activity</h2>
+        <p>Created versus resolved tickets by day</p>
+      </div>
+
+      <div class="chart-legend">
+        <span><i class="legend-created"></i> Created</span>
+        <span><i class="legend-resolved"></i> Resolved</span>
+      </div>
+    </div>
+
+    <div class="chart-area">
+      <div class="y-axis">
+        <span>{{ highestDailyVolume }}</span>
+        <span>{{ (highestDailyVolume / 2) | number:'1.0-0' }}</span>
+        <span>0</span>
+      </div>
+
+      <div class="chart-main">
+        <div class="chart-grid-lines">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <div class="bar-groups">
+          <div class="bar-group" *ngFor="let metric of dailyMetrics">
+            <div class="bars">
+              <div
+                class="bar created-bar"
+                [style.height.%]="barHeight(metric.created)"
+                [title]="'Created: ' + metric.created"
+              >
+                <span>{{ metric.created }}</span>
+              </div>
+
+              <div
+                class="bar resolved-bar"
+                [style.height.%]="barHeight(metric.resolved)"
+                [title]="'Resolved: ' + metric.resolved"
+              >
+                <span>{{ metric.resolved }}</span>
+              </div>
+            </div>
+
+            <span class="day-label">{{ metric.day }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trend-summary">
+      <div>
+        <span class="summary-dot" [class.negative]="resolvedChange < 0"></span>
+        <span>
+          {{ resolvedChange >= 0 ? 'Net positive' : 'Net backlog growth' }}:
+          {{ resolvedChange > 0 ? '+' : '' }}{{ resolvedChange }} tickets
+        </span>
+      </div>
+      <small>Resolved minus created in the displayed sample</small>
+    </div>
+  </section>
+
+  <div class="secondary-grid">
+    <!-- Priority distribution -->
+    <section class="report-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Priority Distribution</h2>
+          <p>Ticket counts by priority</p>
+        </div>
+        <i class="bi bi-bar-chart-line panel-icon"></i>
+      </div>
+
+      <div class="priority-total">
+        <strong>{{ totalTickets }}</strong>
+        <span>sample tickets</span>
+      </div>
+
+      <div class="priority-list">
+        <div class="priority-item" *ngFor="let item of priorityMetrics">
+          <div class="priority-heading">
+            <span>
+              <i class="priority-dot" [ngClass]="item.colorClass"></i>
+              {{ item.name }}
+            </span>
+            <strong>{{ item.count }}</strong>
+          </div>
+
+          <div class="progress priority-track">
+            <div
+              class="progress-bar"
+              [ngClass]="item.colorClass"
+              [style.width.%]="priorityWidth(item.count)"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Performance -->
+    <section class="report-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Agent Performance</h2>
+          <p>Resolved tickets against illustrative targets</p>
+        </div>
+        <i class="bi bi-people panel-icon"></i>
+      </div>
+
+      <div class="performance-total">
+        <div>
+          <strong>{{ totalAgentResolved }}</strong>
+          <span>resolved tickets in sample</span>
+        </div>
+      </div>
+
+      <div class="performance-list">
+        <div class="performance-item" *ngFor="let agent of agentMetrics">
+          <div class="performance-heading">
+            <div class="agent-avatar">{{ agent.name.charAt(0) }}</div>
+            <div class="agent-name">
+              <strong>{{ agent.name }}</strong>
+              <span>{{ agent.active }} active tickets</span>
+            </div>
+            <div class="performance-number">
+              <strong>{{ agent.resolved }}</strong>
+              <span>/ {{ agent.target }}</span>
+            </div>
+          </div>
+
+          <div class="progress performance-track">
+            <div
+              class="progress-bar"
+              [style.width.%]="agentPerformance(agent)"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="reports-footer">
+    <i class="bi bi-shield-check"></i>
+    <span>
+      Analytics are illustrative. Live reporting, date-based aggregation and
+      resolution-time calculations will be connected to the backend later.
+    </span>
+  </footer>
+</div>

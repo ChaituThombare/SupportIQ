@@ -1,12 +1,16 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router, ActivatedRoute } from '@angular/router';
+import { finalize } from 'rxjs';
+import { AuthService } from '../../../../core/services/auth';
+import { TicketService, TicketResponse } from '../../../../core/services/ticket';
 
 type TicketStatus = 'Open' | 'In Progress' | 'Resolved';
 type TicketPriority = 'Low' | 'Medium' | 'High';
 
-interface Ticket {
-  id: string;
+interface DashboardTicket {
+  id: number;
+  reference: string;
   subject: string;
   category: string;
   status: TicketStatus;
@@ -22,45 +26,97 @@ interface Ticket {
   styleUrl: './dashboard.css',
 })
 
-export class CustomerDashboard {
+export class CustomerDashboard implements OnInit {
+  private readonly authService = inject(AuthService);
+  private readonly ticketService = inject(TicketService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
+  
   showAllTickets = false;
   showCreateTicketNotice = false;
-  readonly customerName = 'Alex';
+  loading = false;
+  errorMessage = '';
 
-  readonly tickets: Ticket[] = [
-    {
-      id: 'SUP-1042',
-      subject: 'Unable to access my account',
-      category: 'Account',
-      status: 'In Progress',
-      priority: 'High',
-      updatedAt: 'Today',
-    },
-    {
-      id: 'SUP-1038',
-      subject: 'Payment confirmation missing',
-      category: 'Billing',
-      status: 'Open',
-      priority: 'Medium',
-      updatedAt: 'Yesterday',
-    },
-    {
-      id: 'SUP-1029',
-      subject: 'Update my profile information',
-      category: 'Account',
-      status: 'Resolved',
-      priority: 'Low',
-      updatedAt: 'Oct 10',
-    },
-    {
-      id: 'SUP-1021',
-      subject: 'Application loading slowly',
-      category: 'Technical',
-      status: 'In Progress',
-      priority: 'Medium',
-      updatedAt: 'Oct 8',
-    },
-  ];
+  tickets: DashboardTicket[] = [];
+
+  get customerName(): string {
+    return this.authService.getUser()?.name ?? 'Customer';
+  }
+
+  ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+      this.loadTickets();
+    });
+  }
+
+  loadTickets(): void{
+    this.loading = true;
+    this.errorMessage = '';
+    this.cdr.detectChanges();
+
+    this.ticketService.getMyTickets().subscribe({
+        next: response => {
+          this.tickets = response.map(ticket => this.mapTicket(ticket));
+          this.loading = false;
+
+          console.log('Tickets loaded:', this.tickets.length);
+          console.log('Loading state:', this.loading);
+
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          console.error('Ticket API Error:', error);
+  
+          this.errorMessage = `Could not load tickets (${error.status || 'network error'}).`;
+          this.loading = false;
+          this.cdr.detectChanges();
+        },
+    });
+  }
+
+  private mapTicket(ticket: TicketResponse): DashboardTicket {
+    return {
+      id: ticket.ticketId,
+      reference: `SUP-${String(ticket.ticketId).padStart(4, '0')}`,
+      subject: ticket.subject,
+      category: ticket.categoryId ? `Category ${ticket.categoryId}` : 'Uncategorized',
+      status: this.normalizeStatus(ticket.status),
+      priority: this.normalizePriority(ticket.priority),
+      updatedAt: this.formatDate(ticket.createdOn),
+    };
+  }
+  
+  private normalizeStatus(status: string): TicketStatus {
+    switch (status.replace(/\s+/g, '').toLowerCase()) {
+      case 'inprogress':
+        return 'In Progress';
+      case 'resolved':
+      case 'closed':
+        return 'Resolved';
+      default:
+        return 'Open';
+    }
+  }
+
+  private normalizePriority(priority: string): TicketPriority {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return 'High';
+      case 'medium':
+        return 'Medium';
+      default:
+        return 'Low';
+    }
+  }
+
+  private formatDate(value: string): string {
+    if(!value) return '';
+
+    const date = new Date(value);
+
+    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+  }
 
   get totalTickets(): number {
     return this.tickets.length;
@@ -97,5 +153,10 @@ export class CustomerDashboard {
 
   getPriorityClass(priority: TicketPriority): string {
     return `priority-${priority.toLowerCase()}`;
+  }
+
+  logOut(): void {
+    this.authService.logout();
+    void this.router.navigateByUrl('/auth');
   }
 }

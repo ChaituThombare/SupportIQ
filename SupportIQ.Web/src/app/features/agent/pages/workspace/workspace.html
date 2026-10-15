@@ -1,0 +1,212 @@
+<div class="agent-shell">
+  <aside class="agent-sidebar">
+    <a class="brand" routerLink="/agent/workspace">
+      <span class="brand-icon"><i class="bi bi-headset"></i></span>
+      <span>Support<span class="brand-accent">IQ</span></span>
+    </a>
+
+    <div class="sidebar-label">AGENT WORKSPACE</div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item active" routerLink="/agent/workspace">
+        <i class="bi bi-grid-1x2"></i>
+        Overview
+      </a>
+      <a class="nav-item" href="#ticket-queue">
+        <i class="bi bi-inbox"></i>
+        My Ticket Queue
+      </a>
+    </nav>
+
+    <div class="agent-sidebar-bottom">
+      <div class="ai-sidebar-card">
+        <i class="bi bi-stars"></i>
+        <h6>AI Assistance</h6>
+        <p>Review AI-generated suggestions before responding to customers.</p>
+      </div>
+
+      <a class="nav-item sign-out-link" routerLink="/auth">
+        <i class="bi bi-box-arrow-left"></i>
+        Sign out
+      </a>
+    </div>
+  </aside>
+
+  <main class="agent-main">
+    <header class="agent-topbar">
+      <div>
+        <div class="breadcrumb-text">Workspace / Overview</div>
+        <h2>Agent Workspace</h2>
+      </div>
+
+      <div class="agent-profile">
+        <div class="agent-avatar">{{ agentName.charAt(0) }}</div>
+        <div class="agent-profile-info">
+          <strong>{{ agentName }}</strong>
+          <span>Support Agent</span>
+        </div>
+        <i class="bi bi-chevron-down profile-chevron"></i>
+      </div>
+    </header>
+
+    <section class="agent-welcome">
+      <div>
+        <p class="eyebrow">SUPPORT OPERATIONS</p>
+        <h1>Good to see you, {{ agentName }}.</h1>
+        <p>Review your queue and keep customer issues moving forward.</p>
+      </div>
+
+      <div class="availability-indicator">
+        <span></span>
+        Agent workspace
+      </div>
+    </section>
+
+    <section class="agent-summary-grid">
+      <article class="agent-summary-card">
+        <div class="summary-card-top">
+          <span>Open Tickets</span>
+          <span class="summary-icon icon-orange">
+            <i class="bi bi-inbox"></i>
+          </span>
+        </div>
+        <h3>{{ openCount }}</h3>
+        <p>Awaiting action</p>
+      </article>
+
+      <article class="agent-summary-card">
+        <div class="summary-card-top">
+          <span>In Progress</span>
+          <span class="summary-icon icon-blue">
+            <i class="bi bi-arrow-repeat"></i>
+          </span>
+        </div>
+        <h3>{{ inProgressCount }}</h3>
+        <p>Currently being handled</p>
+      </article>
+
+      <article class="agent-summary-card">
+        <div class="summary-card-top">
+          <span>Resolved</span>
+          <span class="summary-icon icon-green">
+            <i class="bi bi-check2-circle"></i>
+          </span>
+        </div>
+        <h3>{{ resolvedCount }}</h3>
+        <p>Successfully resolved</p>
+      </article>
+
+      <article class="agent-summary-card">
+        <div class="summary-card-top">
+          <span>Critical Priority</span>
+          <span class="summary-icon icon-red">
+            <i class="bi bi-exclamation-triangle"></i>
+          </span>
+        </div>
+        <h3>{{ criticalCount }}</h3>
+        <p>Needs close attention</p>
+      </article>
+    </section>
+
+    <section class="queue-section" id="ticket-queue">
+      <div class="queue-heading">
+        <div>
+          <h3>My Ticket Queue</h3>
+          <p>Review and prioritize your assigned support requests.</p>
+        </div>
+
+        <span class="queue-count">
+          {{ filteredTickets.length }} tickets
+        </span>
+      </div>
+
+      <div class="queue-toolbar">
+        <div class="filter-label">
+          <i class="bi bi-funnel"></i>
+          Filter by status
+        </div>
+
+        <div class="status-filters">
+          @for (status of ['All', 'Open', 'In Progress', 'Resolved', 'Closed']; track status) {
+            <button
+              type="button"
+              class="filter-button"
+              [class.active]="selectedStatus === status"
+              [attr.aria-pressed]="selectedStatus === status"
+              (click)="setStatusFilter(status)">
+              {{ status }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table agent-ticket-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Customer</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Updated</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (ticket of filteredTickets; track ticket.id) {
+              <tr>
+                <td>
+                  <span class="ticket-id">{{ ticket.id }}</span>
+                  <div class="ticket-subject">{{ ticket.subject }}</div>
+                  <span class="ticket-category">{{ ticket.category }}</span>
+                </td>
+                <td>{{ ticket.customer }}</td>
+                <td>
+                  <span class="priority-label"
+                        [ngClass]="getPriorityClass(ticket.priority)">
+                    <span class="priority-dot"></span>
+                    {{ ticket.priority }}
+                  </span>
+                </td>
+                <td>
+                  <span class="status-badge"
+                        [ngClass]="getStatusClass(ticket.status)">
+                    {{ ticket.status }}
+                  </span>
+                </td>
+                <td class="updated-cell">{{ ticket.updatedAt }}</td>
+                <td>
+                  <a
+                    class="open-ticket-button"
+                    [routerLink]="['/agent/tickets', ticket.id]">
+                    Open <i class="bi bi-arrow-up-right"></i>
+                  </a>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6">
+                  <div class="empty-queue">
+                    <i class="bi bi-inbox"></i>
+                    <h4>No tickets in this view</h4>
+                    <p>Choose another status to see more tickets.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="queue-footer">
+        <i class="bi bi-info-circle"></i>
+        Demo queue only. Assignment and ticket updates are not connected to the backend.
+      </div>
+    </section>
+
+    <footer class="agent-footer">
+      SupportIQ <span>·</span> Agent Operations
+    </footer>
+  </main>
+</div>

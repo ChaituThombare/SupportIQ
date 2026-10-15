@@ -1,21 +1,30 @@
+
 <div class="ticket-page">
   <header class="page-header">
-    <div>
-      <a routerLink="/customer/dashboard" class="back-link">
-        <i class="bi bi-arrow-left"></i> Back to Dashboard
-      </a>
-      <p class="eyebrow">CUSTOMER SUPPORT</p>
-      <h1>Create a Support Ticket</h1>
-      <p class="page-description">
-        Tell us what you need help with. Our support team will review your request.
-      </p>
-    </div>
+    <a routerLink="/customer/dashboard" class="back-link">
+      <i class="bi bi-arrow-left"></i>
+      Back to Dashboard
+    </a>
+
+    <p class="eyebrow">CUSTOMER SUPPORT</p>
+    <h1>Create a Support Ticket</h1>
+    <p class="page-description">
+      Tell us what happened. Our AI will help classify and prioritize
+      your ticket so our support team can review it.
+    </p>
   </header>
 
   @if (successMessage) {
     <div class="alert alert-success" role="status">
-      <i class="bi bi-check-circle-fill me-2"></i>
+      <i class="bi bi-check-circle me-2"></i>
       {{ successMessage }}
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger" role="alert">
+      <i class="bi bi-exclamation-circle me-2"></i>
+      {{ errorMessage }}
     </div>
   }
 
@@ -25,107 +34,174 @@
         <div class="heading-icon">
           <i class="bi bi-ticket-perforated"></i>
         </div>
+
         <div>
           <h2>Ticket Details</h2>
           <p>Fields marked with * are required.</p>
         </div>
       </div>
 
-      <form [formGroup]="ticketForm"
-            (ngSubmit)="submitForm()"
-            novalidate>
-
+      <form
+        [formGroup]="ticketForm"
+        (ngSubmit)="submitForm()"
+        novalidate
+      >
         <div class="form-field">
           <label for="category" class="form-label">
             Category <span>*</span>
           </label>
-          <select id="category"
-                  class="form-select"
-                  formControlName="category"
-                  (change)="clearSuccessMessage()">
-            <option value="">Choose a category</option>
-            <option value="Account">Account</option>
-            <option value="Billing">Billing</option>
-            <option value="Technical">Technical</option>
-            <option value="Other">Other</option>
+
+          <select
+            id="category"
+            class="form-select"
+            formControlName="categoryId"
+            (change)="clearMessage()"
+            [disabled]="loadingCategories || categories.length === 0"
+          >
+            <option [ngValue]="0">
+              @if(loadingCategories) {
+                Loading categories...
+              } @else if (categories.length === 0) {
+                No categories available
+              } @else {
+                Choose a category
+              }
+            </option>
+
+            @for (category of categories; track category.id) {
+              <option [ngValue]="category.id">
+                {{ category.name }}
+              </option>
+            }
           </select>
-          @if (ticketForm.controls.category.touched &&
-               ticketForm.controls.category.hasError('required')) {
-            <small class="validation-error">Please select a category.</small>
+          
+          @if(categoriesError) {
+            <small class="validation-error">
+              {{ categoriesError }}
+            </small>
           }
+          
+          @if (
+            ticketForm.controls.categoryId.touched &&
+            ticketForm.controls.categoryId.invalid
+          ) {
+            <small class="validation-error">
+              Please select a category.
+            </small>
+          }
+
+          <small class="field-hint">
+            Choose the closest match. AI will help analyze your ticket.
+          </small>
         </div>
 
         <div class="form-field">
           <label for="subject" class="form-label">
             Subject <span>*</span>
           </label>
-          <input id="subject"
-                 type="text"
-                 class="form-control"
-                 formControlName="subject"
-                 placeholder="Briefly describe your issue"
-                 maxlength="120"
-                 (input)="clearSuccessMessage()" />
-          @if (ticketForm.controls.subject.touched &&
-               ticketForm.controls.subject.hasError('required')) {
-            <small class="validation-error">Subject is required.</small>
-          } @else if (ticketForm.controls.subject.touched &&
-                      ticketForm.controls.subject.hasError('minlength')) {
+
+          <input
+            id="subject"
+            type="text"
+            class="form-control"
+            formControlName="subject"
+            placeholder="e.g. Payment deducted but order not placed"
+            maxlength="120"
+            (input)="clearMessage()"
+          />
+
+          @if (
+            ticketForm.controls.subject.touched &&
+            ticketForm.controls.subject.hasError('required')
+          ) {
+            <small class="validation-error">
+              Subject is required.
+            </small>
+          } @else if (
+            ticketForm.controls.subject.touched &&
+            ticketForm.controls.subject.hasError('minlength')
+          ) {
             <small class="validation-error">
               Subject must contain at least 5 characters.
             </small>
           }
-        </div>
 
-        <div class="form-field">
-          <label for="priority" class="form-label">
-            Priority <span>*</span>
-          </label>
-          <select id="priority"
-                  class="form-select"
-                  formControlName="priority"
-                  (change)="clearSuccessMessage()">
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-          </select>
           <small class="field-hint">
-            Choose High only when the issue needs urgent attention.
+            {{ ticketForm.controls.subject.value.length }}/120 characters
           </small>
         </div>
 
         <div class="form-field">
           <label for="description" class="form-label">
-            Description <span>*</span>
+            Describe your issue <span>*</span>
           </label>
-          <textarea id="description"
-                    class="form-control description-input"
-                    formControlName="description"
-                    placeholder="Explain what happened and what you were trying to do..."
-                    rows="6"
-                    maxlength="3000"
-                    (input)="clearSuccessMessage()"></textarea>
-          @if (ticketForm.controls.description.touched &&
-               ticketForm.controls.description.hasError('required')) {
-            <small class="validation-error">Description is required.</small>
-          } @else if (ticketForm.controls.description.touched &&
-                      ticketForm.controls.description.hasError('minlength')) {
+
+          <textarea
+            id="description"
+            class="form-control description-input"
+            formControlName="description"
+            placeholder="Explain what happened, what you expected, and any error messages..."
+            rows="7"
+            maxlength="3000"
+            (input)="clearMessage()"
+          ></textarea>
+
+          @if (
+            ticketForm.controls.description.touched &&
+            ticketForm.controls.description.hasError('required')
+          ) {
+            <small class="validation-error">
+              Description is required.
+            </small>
+          } @else if (
+            ticketForm.controls.description.touched &&
+            ticketForm.controls.description.hasError('minlength')
+          ) {
             <small class="validation-error">
               Description must contain at least 10 characters.
             </small>
           }
+
           <small class="field-hint">
-            Include any relevant details to help us investigate.
+            Include relevant dates, deadlines, times, error messages,
+            and how the issue affects you. Never include passwords
+            or sensitive credentials.
           </small>
+
+          <div class="character-count">
+            {{ ticketForm.controls.description.value.length }}/3000
+            characters
+          </div>
+        </div>
+
+        <div class="ai-notice">
+          <i class="bi bi-stars"></i>
+          <div>
+            <strong>AI-assisted ticket analysis</strong>
+            <p>
+              Your ticket's category and priority can be analyzed
+              automatically from the information you provide.
+            </p>
+          </div>
         </div>
 
         <div class="form-actions">
           <a routerLink="/customer/dashboard" class="cancel-button">
             Cancel
           </a>
-          <button type="submit" class="submit-button">
-            <i class="bi bi-send me-2"></i>
-            Submit Ticket
+
+          <button
+            type="submit"
+            class="submit-button"
+            [disabled]="loading"
+          >
+            @if (loading) {
+              <span class="spinner-border spinner-border-sm me-2"></span>
+              Submitting...
+            } @else {
+              <i class="bi bi-send me-2"></i>
+              Submit Ticket
+            }
           </button>
         </div>
       </form>
@@ -135,28 +211,37 @@
       <div class="info-icon">
         <i class="bi bi-headset"></i>
       </div>
+
       <h3>How can we help?</h3>
       <p>
-        Give us a clear description of your issue so the right support team
-        can investigate it.
+        A clear description helps our support team understand your issue
+        and investigate it more effectively.
       </p>
 
       <div class="info-point">
         <i class="bi bi-check-circle"></i>
-        <span>Choose the closest matching category.</span>
+        <span>Select the closest matching category.</span>
       </div>
+
       <div class="info-point">
         <i class="bi bi-check-circle"></i>
-        <span>Describe what you expected and what happened.</span>
+        <span>Explain what you expected and what actually happened.</span>
       </div>
+
       <div class="info-point">
         <i class="bi bi-check-circle"></i>
-        <span>Do not include passwords or sensitive credentials.</span>
+        <span>Mention important deadlines or time-sensitive issues.</span>
+      </div>
+
+      <div class="info-point">
+        <i class="bi bi-check-circle"></i>
+        <span>Never share passwords or sensitive credentials.</span>
       </div>
 
       <div class="response-note">
         <i class="bi bi-info-circle me-2"></i>
-        Ticket tracking will be enabled after backend integration.
+        AI assists with classification and prioritization. The support
+        team remains responsible for reviewing and resolving your issue.
       </div>
     </aside>
   </div>

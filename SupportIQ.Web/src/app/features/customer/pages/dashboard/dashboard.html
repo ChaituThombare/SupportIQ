@@ -24,7 +24,7 @@
         <h6>Need help?</h6>
         <p>Create a ticket and our team will assist you.</p>
       </div>
-      <button type="button" class="logout-button">
+      <button type="button" class="logout-button" (click)="logOut()">
         <i class="bi bi-box-arrow-left"></i>
         Sign out
       </button>
@@ -124,6 +124,30 @@
         </button>
       </div>
 
+      @if(loading) {
+        <div class="text-center py-4" role="status">
+          <span class="spinner-border spinner-border-sm me-2"></span>
+          Loading your tickets...
+        </div>
+      }
+
+      @if(errorMessage){
+        <div class="alert alert-danger" role="alert">
+          {{ errorMessage }}
+          <button type="button" class="btn btn-sm btn-outline-danger ms-2" (click)="loadTickets()">
+            Retry
+          </button>
+        </div>
+      }
+
+      @if(!loading && !errorMessage && tickets.length === 0){
+        <div class="empty-state">
+          <i class="bi bi-inbox"></i>
+          <h4>No tickets yet</h4>
+          <p>Your support requests will appear here.</p>
+        </div>
+      }
+      
       <div class="table-responsive ticket-table-wrapper">
         <table class="table ticket-table align-middle mb-0">
           <thead>
@@ -139,7 +163,7 @@
             @for (ticket of (showAllTickets ? tickets : tickets.slice(0, 3)); track ticket.id) {
               <tr>
                 <td>
-                  <div class="ticket-id">{{ ticket.id }}</div>
+                  <div class="ticket-id">{{ ticket.reference }}</div>
                   <a class="ticket-subject ticket-subject-link" [routerLink]="['/customer/tickets',ticket.id]" >
                     {{ ticket.subject }}
                   </a>

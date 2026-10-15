@@ -1,0 +1,219 @@
+<div class="workspace-page">
+  <a routerLink="/agent/workspace" class="back-link">
+    <i class="bi bi-arrow-left"></i>
+    Back to Ticket Queue
+  </a>
+
+  @if (feedbackMessage) {
+    <div class="workspace-alert"
+         [class.alert-success]="feedbackType === 'success'"
+         [class.alert-warning]="feedbackType === 'warning'"
+         role="status">
+      <i class="bi bi-info-circle"></i>
+      <span>{{ feedbackMessage }}</span>
+      <button type="button" aria-label="Dismiss message"
+              (click)="feedbackMessage = ''">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+  }
+
+  @if (ticket; as currentTicket) {
+    <header class="workspace-header">
+      <div>
+        <div class="ticket-reference">{{ currentTicket.id }}</div>
+        <h1>{{ currentTicket.subject }}</h1>
+        <p>Customer support request · Created {{ currentTicket.createdAt }}</p>
+      </div>
+
+      <span class="status-badge" [ngClass]="getStatusClass(currentTicket.status)">
+        {{ currentTicket.status }}
+      </span>
+    </header>
+
+    <div class="workspace-grid">
+      <main class="workspace-content">
+        <section class="workspace-card">
+          <div class="card-heading">
+            <div class="heading-icon">
+              <i class="bi bi-file-earmark-text"></i>
+            </div>
+            <div>
+              <h2>Issue Description</h2>
+              <p>Review the customer's reported issue.</p>
+            </div>
+          </div>
+
+          <p class="issue-description">{{ currentTicket.description }}</p>
+
+          <div class="ticket-tags">
+            <span class="category-tag">
+              <i class="bi bi-folder2"></i>
+              {{ currentTicket.category }}
+            </span>
+            <span class="priority-tag"
+                  [ngClass]="getPriorityClass(currentTicket.priority)">
+              <i class="bi bi-flag"></i>
+              {{ currentTicket.priority }} Priority
+            </span>
+          </div>
+        </section>
+
+        <section class="workspace-card">
+          <div class="card-heading">
+            <div class="heading-icon conversation-icon">
+              <i class="bi bi-chat-left-text"></i>
+            </div>
+            <div>
+              <h2>Customer Conversation</h2>
+              <p>Review the message history before responding.</p>
+            </div>
+          </div>
+
+          <div class="conversation-list">
+            @for (message of messages; track $index) {
+              <article class="conversation-message">
+                <div class="message-avatar"
+                     [class.agent-avatar]="message.role === 'Agent'">
+                  {{ message.sender.charAt(0) }}
+                </div>
+
+                <div class="message-body">
+                  <div class="message-meta">
+                    <strong>{{ message.sender }}</strong>
+                    <span class="role-tag">{{ message.role }}</span>
+                    <time>{{ message.time }}</time>
+                  </div>
+                  <p>{{ message.message }}</p>
+                </div>
+              </article>
+            }
+          </div>
+        </section>
+
+        <section class="workspace-card ai-card">
+          <div class="card-heading">
+            <div class="heading-icon ai-icon">
+              <i class="bi bi-stars"></i>
+            </div>
+            <div>
+              <h2>AI Reply Assistant</h2>
+              <p>Generate a draft, review it, and edit it before sending.</p>
+            </div>
+            <span class="demo-label">DEMO</span>
+          </div>
+
+          <div class="ai-disclaimer">
+            <i class="bi bi-shield-check"></i>
+            AI suggestions are drafts only. The agent remains responsible for the final response.
+          </div>
+
+          <label for="replyDraft" class="reply-label">Reply to customer</label>
+          <textarea
+            id="replyDraft"
+            class="form-control reply-textarea"
+            [(ngModel)]="draftReply"
+            name="replyDraft"
+            rows="7"
+            maxlength="5000"
+            placeholder="Generate a draft or write your own response...">
+          </textarea>
+
+          <div class="reply-actions">
+            <button type="button" class="generate-button"
+                    (click)="generateDemoDraft()">
+              <i class="bi bi-stars"></i>
+              Generate Demo Draft
+            </button>
+
+            <button type="button" class="send-button"
+                    (click)="sendReply()">
+              <i class="bi bi-send"></i>
+              Send Reply
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <aside class="workspace-sidebar">
+        <section class="workspace-card ticket-info-card">
+          <h2>Ticket Information</h2>
+
+          <div class="info-row">
+            <span>Ticket ID</span>
+            <strong>{{ currentTicket.id }}</strong>
+          </div>
+
+          <div class="info-row">
+            <span>Customer</span>
+            <strong>{{ currentTicket.customer }}</strong>
+          </div>
+
+          <div class="info-row">
+            <span>Email</span>
+            <strong class="customer-email">{{ currentTicket.email }}</strong>
+          </div>
+
+          <div class="info-row">
+            <span>Category</span>
+            <strong>{{ currentTicket.category }}</strong>
+          </div>
+
+          <div class="info-row">
+            <span>Priority</span>
+            <strong [ngClass]="getPriorityClass(currentTicket.priority)">
+              {{ currentTicket.priority }}
+            </strong>
+          </div>
+        </section>
+
+        <section class="workspace-card status-card">
+          <div class="status-card-heading">
+            <i class="bi bi-sliders"></i>
+            <h2>Manage Status</h2>
+          </div>
+
+          <label for="ticketStatus" class="reply-label">Ticket status</label>
+          <select id="ticketStatus"
+                  class="form-select"
+                  [(ngModel)]="selectedStatus"
+                  name="ticketStatus">
+            <option value="Open">Open</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Closed">Closed</option>
+          </select>
+
+          <button type="button" class="update-status-button"
+                  [disabled]="!selectedStatus || selectedStatus === currentTicket.status"
+                  (click)="updateStatus()">
+            <i class="bi bi-check2"></i>
+            Update Status
+          </button>
+
+          <p class="status-help">
+            Demo changes stay in memory and are not saved to the database.
+          </p>
+        </section>
+
+        <section class="ai-tip-card">
+          <div class="tip-icon"><i class="bi bi-lightbulb"></i></div>
+          <h3>Agent tip</h3>
+          <p>
+            Acknowledge the customer's concern, address the reported issue,
+            and avoid promising a resolution before it is confirmed.
+          </p>
+        </section>
+      </aside>
+    </div>
+  } @else {
+    <section class="workspace-card not-found">
+      <i class="bi bi-ticket-perforated"></i>
+      <h2>Ticket not found</h2>
+      <p>No demo ticket matches ID {{ ticketId }}.</p>
+      <a routerLink="/agent/workspace" class="back-to-queue">
+        Return to Ticket Queue
+      </a>
+    </section>
+  }
+</div>

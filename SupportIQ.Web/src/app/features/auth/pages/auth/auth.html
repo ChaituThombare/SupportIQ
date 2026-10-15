@@ -211,19 +211,32 @@
           </div>
 
           @if (message) {
-            <div class="alert alert-success py-2 small" role="status">
+            <div 
+              class="alert py-2 small" 
+              [class.alert-success]="messageType === 'success'"
+              [class.alert-danger]="messageType === 'error'"
+              [attr.role]="messageType === 'error' ? 'alert' : 'status'"
+            >
               {{ message }}
             </div>
           }
 
-          <button type="submit" class="btn auth-submit w-100 mt-3">
-            {{ isLogin ? 'Sign in' : 'Create account' }}
-            <i
-              class="bi ms-2"
-              [class.bi-arrow-right]="true"
-            ></i>
+          <button
+            type="submit"
+            class="btn auth-submit w-100 mt-3"
+            [disabled]="loading"
+          >
+            @if (loading) {
+              <span
+                class="spinner-border spinner-border-sm me-2"
+                aria-hidden="true"
+              ></span>
+              {{ isLogin ? 'Signing in...' : 'Creating account...' }}
+            } @else {
+              {{ isLogin ? 'Sign in' : 'Create account' }}
+              <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
+            }
           </button>
-
         </form>
 
         <p class="auth-footer text-center mt-4 mb-0">

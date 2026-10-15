@@ -406,3 +406,58 @@
     margin-left: 0;
   }
 }
+
+
+.loading-state {
+  padding: 60px 25px;
+  text-align: center;
+}
+
+.loading-state h2 {
+  margin-top: 18px;
+  font-size: 21px;
+}
+
+.loading-state p,
+.empty-conversation p {
+  color: #7c899d;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.loading-icon {
+  display: inline-block;
+  color: #4267ed;
+  font-size: 36px;
+  animation: ticket-spin 1.2s linear infinite;
+}
+
+.empty-conversation {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px 12px;
+  text-align: center;
+}
+
+.empty-conversation > i {
+  color: #8998b1;
+  font-size: 30px;
+}
+
+.empty-conversation p {
+  max-width: 380px;
+  margin: 0;
+}
+
+@keyframes ticket-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-icon {
+    animation: none;
+  }
+}
