@@ -131,6 +131,32 @@ namespace SupportIQ.API.Controllers
             return Ok(tickets);
         }
 
+        [Authorize(Roles = "Agent")]
+        [HttpGet("assigned/{id:int}")]
+        public async Task<IActionResult> GetAssignedTicketById(int id)
+        {
+            var agentId = GetCurrentUserId();
+
+            if (agentId is null)
+            {
+                return Unauthorized(new
+                {
+                    message = "Invalid user identity."
+                });
+            }
+            
+            var ticket = await _ticketService.GetAssignedTicketByIdAsync(id, agentId.Value);
+            
+            if (ticket is null)
+            {
+                return NotFound(new
+                {
+                    message = "Assigned ticket not found."
+                });
+            }
+            return Ok(ticket);
+        }
+   
         // ADMIN
         [Authorize(Roles = "Admin")]
         [HttpPost("{id:int}/assign")]

@@ -151,17 +151,18 @@ namespace SupportIQ.Infrastructure.Services
         {
             return await _context.Tickets
                 .AsNoTracking()
-                .Where(t => t.AssignedAgentId == agentId &&
-                       t.Status != "Resolved" &&
-                       t.Status != "Closed")
-                .OrderByDescending(t => t.CreatedOn)
+                .Where(t => t.AssignedAgentId == agentId)
+                .OrderByDescending(t => t.UpdatedOn ??  t.CreatedOn)
                 .Select(t => new TicketResponse
                 {
                     TicketId = t.TicketId,
                     CustomerId = t.CustomerId,
+                    CustomerName = t.Customer.Name,
+                    CustomerEmail = t.Customer.Email,
                     Subject = t.Subject,
                     Description = t.Description,
                     CategoryId = t.CategoryId,
+                    CategoryName = t.Category != null ? t.Category.CategoryName : null,
                     Priority = t.Priority,
                     Status = t.Status,
                     IsAIClassified = t.IsAIClassified,
@@ -200,6 +201,30 @@ namespace SupportIQ.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             return MapToResponse(ticket);
+        }
+
+        public async Task<TicketResponse?> GetAssignedTicketByIdAsync(int ticketId, int agentId)
+        {
+            return await _context.Tickets
+                .AsNoTracking()
+                .Where(t => t.TicketId == ticketId &&
+                       t.AssignedAgentId == agentId)
+                .Select(t => new TicketResponse
+                {
+                    TicketId = t.TicketId,
+                    CustomerId = t.CustomerId,
+                    CustomerName = t.Customer.Name,
+                    CustomerEmail = t.Customer.Email,
+                    Subject = t.Subject,
+                    Description = t.Description,
+                    CategoryId = t.CategoryId,
+                    CategoryName = t.Category != null ? t.Category.CategoryName : null,
+                    Priority = t.Priority,
+                    Status = t.Status,
+                    IsAIClassified = t.IsAIClassified,
+                    CreatedOn = t.CreatedOn
+                })
+                .FirstOrDefaultAsync();
         }
 
         private static TicketResponse MapToResponse(Ticket ticket)

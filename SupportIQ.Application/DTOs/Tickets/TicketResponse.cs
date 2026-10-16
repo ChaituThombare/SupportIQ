@@ -10,9 +10,12 @@ namespace SupportIQ.Application.DTOs.Tickets
     {
         public int TicketId { get; set; }
         public int CustomerId { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerEmail { get; set; } = string.Empty;
         public string Subject { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public int? CategoryId { get; set; }
+        public string? CategoryName { get; set; }
         public string Priority { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public bool IsAIClassified { get; set; }

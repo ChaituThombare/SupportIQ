@@ -4,11 +4,6 @@ using SupportIQ.Application.Interfaces;
 using Microsoft.Identity.Client;
 using SupportIQ.Domain.Entities;
 using SupportIQ.Infrastructure.Data;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SupportIQ.Infrastructure.Services
 {
@@ -53,6 +48,7 @@ namespace SupportIQ.Infrastructure.Services
                     MessageId = m.MessageId,
                     TicketId = m.TicketId,
                     SenderId = m.SenderId,
+                    SenderName = m.Sender.Name,
                     SenderType = m.SenderType,
                     MessageText = m.MessageText,
                     IsAISuggested = m.IsAISuggested,
@@ -120,6 +116,10 @@ namespace SupportIQ.Infrastructure.Services
                 MessageId = message.MessageId,
                 TicketId = message.TicketId,
                 SenderId = message.SenderId,
+                SenderName = (await _context.Users
+                    .Where(u => u.UserId == message.SenderId)
+                    .Select(u => u.Name)
+                    .FirstOrDefaultAsync()) ?? message.SenderType,
                 SenderType = message.SenderType,
                 MessageText = message.MessageText,
                 IsAISuggested = message.IsAISuggested,

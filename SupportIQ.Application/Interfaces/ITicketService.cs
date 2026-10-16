@@ -21,6 +21,8 @@ namespace SupportIQ.Application.Interfaces
 
         Task<TicketResponse?> AssignTicketAsync(int ticketId, int agentId);
 
+        Task<TicketResponse?> GetAssignedTicketByIdAsync(int ticketId, int agentId);
+
         Task<TicketResponse?> UpdateTicketStatusAsync(int ticketId, string status, int userId, bool isAdmin);
 
         Task<TicketResponse?> UpdateTicketPriorityAsync(int ticketId, string priority, int userId, bool isAdmin);

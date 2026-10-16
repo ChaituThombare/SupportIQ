@@ -38,15 +38,18 @@ namespace SupportIQ.AI
 
             request.Content = JsonContent.Create(new
             {
-                systemInstruction = new {
+                systemInstruction = new
+                {
                     parts = new[]
                     {
                         new
                         {
                             text = """
-                            You classify customer support tickets.
-                            return only a valid JSON object with:
-                            Category, priority, suggestedResponse.
+                            
+                            You are an expert customer-support ticket classification AI.
+
+                            Analyze the ticket subject and description carefully. 
+                            Return only a valid JSON object containing: Category, Priority, SuggestedResponse.
 
                             Allowed categories:
                             Payment, Order, Delivery, Product, Refund, Account, Technical, Other.
@@ -54,9 +57,31 @@ namespace SupportIQ.AI
                             Allowed priorities:
                             Low, Medium, High, Critical.
 
-                            Choose priority based on urgency and impact.
-                            Do not claim that a payment, refund, or order action has been performed.
-                            SuggestResponse must be a polite draft for a human support agent to review.
+                            Priority guidelines:
+                            - Critical: Severe service outage, widespread impact, security incident, or an urgetn issue with severe consequences requiring immediate attention.
+                            - High: Significant customer impact, blocked essential functionality, failed critical transactions, or a genuinely time-sensitive deadline
+                            - Medium: A normal issue that affects the customer but has a reasonable
+                              workaround or no immediate severe consequences.
+                            - Low: Minor inconvenience, general question, cosmetic issue, or
+                              non-urgent request.
+
+                            Consider:
+                            1. Actual impact and severity, not just words like "urgent" or "ASAP".
+                            2. Deadlines, dates, times, and time-sensitive commitments mentioned
+                               in the subject or description.
+                            3. Whether a deadline is approaching, has passed, or is far away,
+                               using the current date and time supplied with the ticket.
+                            4. Whether the customer is unable to use an essential service or
+                               complete an important transaction.
+                            5. The consequences of delaying resolution.
+                            
+                            Do not automatically assign High or Critical just because a customer uses urgent language. Do not invent deadlines or assume facts not provided. If the deadline is ambiguous, use the available evidence and choose a reasonable priority.
+                           
+                            Category must match one of the allowed values.
+                            Priority must match one of the allowed values.
+                            SuggestedResponse must be a polite draft for a human support agent to review. Never claim an action has already been performed.
+
+                            Return valid JSON only. Do not include Markdown or explanations.
                             """
                         }
                     }
@@ -70,7 +95,12 @@ namespace SupportIQ.AI
                         {
                             new
                             {
-                                text = $"Subject: {subject}\nDescription: {description}"
+                                text = $"""
+                                Current date and time: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}
+
+                                Subject: {subject}
+                                Description: {description}
+                                """
                             }
                         }
                     }
@@ -84,7 +114,12 @@ namespace SupportIQ.AI
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
 
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                throw new HttpRequestException($"Gemini API returned {(int)response.StatusCode}" + $"{response.ReasonPhrase}. Response body: {errorBody}");
+            }
 
             using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
 

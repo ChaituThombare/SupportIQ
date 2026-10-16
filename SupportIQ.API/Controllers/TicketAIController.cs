@@ -98,7 +98,9 @@ namespace SupportIQ.API.Controllers
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogWarning(ex, "AI service is unavailable for ticket {TicketId}.", id);
+                _logger.LogError(
+                    ex,
+                    "Gemini API request failed for ticket {ticketId}.", id);
 
                 return StatusCode(StatusCodes.Status503ServiceUnavailable, new
                 {
