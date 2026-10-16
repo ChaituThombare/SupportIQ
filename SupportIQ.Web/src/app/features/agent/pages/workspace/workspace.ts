@@ -1,97 +1,82 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectorRef, inject, OnInit, Component } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
+import { TicketService, TicketResponse } from '../../../../core/services/ticket';
 
 type TicketStatus = 'Open' | 'In Progress' | 'Resolved' | 'Closed';
 type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 
-interface AgentTicket {
-  id: string;
-  subject: string;
-  customer: string;
-  category: string;
-  priority: TicketPriority;
-  status: TicketStatus;
-  updatedAt: string;
-}
-
 @Component({
   selector: 'app-workspace',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, DatePipe],  
   templateUrl: './workspace.html',
   styleUrl: './workspace.css',
 })
-export class Workspace {
-  readonly agentName = 'Jordan';
+export class Workspace implements OnInit {
+  private readonly ticketService = inject(TicketService)
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  readonly tickets: AgentTicket[] = [
-    {
-      id: 'SUP-1042',
-      subject: 'Unable to access my account',
-      customer: 'Alex Morgan',
-      category: 'Account',
-      priority: 'High',
-      status: 'In Progress',
-      updatedAt: '10 min ago',
-    },
-    {
-      id: 'SUP-1048',
-      subject: 'Payment processed twice',
-      customer: 'Taylor Smith',
-      category: 'Billing',
-      priority: 'Critical',
-      status: 'Open',
-      updatedAt: '25 min ago',
-    },
-    {
-      id: 'SUP-1051',
-      subject: 'Application loading slowly',
-      customer: 'Sam Wilson',
-      category: 'Technical',
-      priority: 'Medium',
-      status: 'Open',
-      updatedAt: '1 hour ago',
-    },
-    {
-      id: 'SUP-1036',
-      subject: 'Update profile information',
-      customer: 'Jamie Lee',
-      category: 'Account',
-      priority: 'Low',
-      status: 'Resolved',
-      updatedAt: 'Yesterday',
-    },
-    {
-      id: 'SUP-1054',
-      subject: 'Unable to download invoice',
-      customer: 'Chris Patel',
-      category: 'Billing',
-      priority: 'High',
-      status: 'In Progress',
-      updatedAt: '2 hours ago',
-    },
-  ];
-
+  
+  tickets: TicketResponse[] = [];
+  loading = false;
+  errorMessage = '';
   selectedStatus = 'All';
 
-  get filteredTickets(): AgentTicket[] {
+  readonly agentName = 'Agent'
+  
+  ngOnInit(): void {
+    this.loadTickets();
+  }
+
+  loadTickets(): void {
+    this.loading = true;
+    this.errorMessage = '';
+
+    this.ticketService.getAssignedTickets()
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: tickets => {
+          this.tickets = tickets;
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          this.errorMessage = error.status === 401 ? 'Session expired. Please log in again' : error.status === 403 ? 'Agent access required.' : 'Unable to load assigned tickets.';
+
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  get filteredTickets(): TicketResponse[] {
     if (this.selectedStatus === 'All') {
       return this.tickets;
     }
 
+    const selected = this.normalizeStatus(this.selectedStatus);
+
     return this.tickets.filter(
-      ticket => ticket.status === this.selectedStatus,
+      ticket => this.normalizeStatus(ticket.status) === selected,
     );
   }
 
+  private normalizeStatus(status: string): string {
+    return status.toLowerCase().replace(/\s+/g, '');
+  }
+  
   get openCount(): number {
     return this.tickets.filter(ticket => ticket.status === 'Open').length;
   }
 
   get inProgressCount(): number {
     return this.tickets.filter(
-      ticket => ticket.status === 'In Progress',
+      ticket => ['InProgress', 'In Progress'].includes(ticket.status),
     ).length;
   }
 
@@ -107,16 +92,18 @@ export class Workspace {
     ).length;
   }
 
-  getStatusClass(status: TicketStatus): string {
-    switch (status) {
-      case 'Open':
+  getStatusClass(status: string): string {
+    switch (status.toLowerCase().replace(/\s+/g, '')) {
+      case 'open':
         return 'status-open';
-      case 'In Progress':
+      case 'inprogress':
         return 'status-progress';
-      case 'Resolved':
+      case 'resolved':
         return 'status-resolved';
-      case 'Closed':
+      case 'closed':
         return 'status-closed';
+      default:
+        return 'status-open';
     }
   }
 

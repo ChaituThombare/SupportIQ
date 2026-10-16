@@ -140,6 +140,25 @@
         </div>
       </div>
 
+      @if(loading){
+        <div class="loading-state" role="status">
+          <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+          Loading assigned tickets...
+        </div>
+      }
+
+      @if(errorMessage){
+        <div class="alert alert-danger m-3" role="alert">
+          <i class="bi bi-exclamation-circle me-2"></i>
+          <p>{{ errorMessage }}</p>
+          <button type="button" 
+                  class="btn btn-sm btn-outline-danger ms-2" 
+                  (click)="loadTickets()">
+                  Retry
+          </button>
+        </div>
+      }
+
       <div class="table-responsive">
         <table class="table agent-ticket-table align-middle mb-0">
           <thead>
@@ -154,46 +173,54 @@
           </thead>
 
           <tbody>
-            @for (ticket of filteredTickets; track ticket.id) {
+            @for (ticket of filteredTickets; track ticket.ticketId) {
               <tr>
                 <td>
-                  <span class="ticket-id">{{ ticket.id }}</span>
+                  <span class="ticket-id">#{{ ticket.ticketId }}</span>
                   <div class="ticket-subject">{{ ticket.subject }}</div>
-                  <span class="ticket-category">{{ ticket.category }}</span>
+                  <span class="ticket-category">{{ ticket.categoryName || 'Uncategorized' }}
+                  </span>
                 </td>
-                <td>{{ ticket.customer }}</td>
+                <td>{{ ticket.customerName || ('Customer #' + ticket.customerId) }}</td>
+
                 <td>
                   <span class="priority-label"
-                        [ngClass]="getPriorityClass(ticket.priority)">
+                    [ngClass]="getPriorityClass($any(ticket.priority))">
                     <span class="priority-dot"></span>
                     {{ ticket.priority }}
                   </span>
                 </td>
+
                 <td>
                   <span class="status-badge"
                         [ngClass]="getStatusClass(ticket.status)">
-                    {{ ticket.status }}
+                    {{ ticket.status === 'InProgress' ? 'In Progress' : ticket.status }}
                   </span>
                 </td>
-                <td class="updated-cell">{{ ticket.updatedAt }}</td>
+                <td class="updated-cell">{{ ticket.createdOn | date: 'medium' }}
+                </td>
                 <td>
                   <a
                     class="open-ticket-button"
-                    [routerLink]="['/agent/tickets', ticket.id]">
+                    [routerLink]="['/agent/tickets', ticket.ticketId]">
                     Open <i class="bi bi-arrow-up-right"></i>
                   </a>
                 </td>
               </tr>
             } @empty {
-              <tr>
-                <td colspan="6">
-                  <div class="empty-queue">
-                    <i class="bi bi-inbox"></i>
-                    <h4>No tickets in this view</h4>
-                    <p>Choose another status to see more tickets.</p>
-                  </div>
-                </td>
-              </tr>
+              @if(!loading && !errorMessage){
+                <tr>
+                  <td colspan="6">
+                    <div class="empty-queue">
+                      <i class="bi bi-inbox"></i>
+                      <h4>No tickets in this view</h4>
+                      <p>
+                        No assigned tickets match this filter. Choose another status to see more tickets.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              }
             }
           </tbody>
         </table>
@@ -201,7 +228,7 @@
 
       <div class="queue-footer">
         <i class="bi bi-info-circle"></i>
-        Demo queue only. Assignment and ticket updates are not connected to the backend.
+        Showing tickets assigned to your agent account.
       </div>
     </section>
 

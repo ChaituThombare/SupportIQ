@@ -1,7 +1,19 @@
-import { Component, inject } from '@angular/core';
+
+import {
+  Component,
+  ChangeDetectorRef,
+  OnInit,
+  inject
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
+import {
+  TicketService,
+  TicketResponse,
+  TicketMessage
+} from '../../../../core/services/ticket';
 
 type AgentStatus = 'Open' | 'In Progress' | 'Resolved' | 'Closed';
 
@@ -31,149 +43,225 @@ interface WorkspaceTicket {
   templateUrl: './ticket-workspace.html',
   styleUrl: './ticket-workspace.css',
 })
-export class TicketWorkspace {
+export class TicketWorkspace implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly ticketService = inject(TicketService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  readonly ticketId = this.route.snapshot.paramMap.get('id') ?? '';
+  readonly ticketId = Number(this.route.snapshot.paramMap.get('id'));
 
-  private readonly mockTickets: WorkspaceTicket[] = [
-    {
-      id: 'SUP-1042',
-      subject: 'Unable to access my account',
-      customer: 'Alex Morgan',
-      email: 'alex@example.com',
-      category: 'Account',
-      priority: 'High',
-      status: 'In Progress',
-      createdAt: 'October 12, 2026',
-      description:
-        'I cannot access my account. After entering my credentials, the login page does not proceed. I have already tried refreshing the page.',
-    },
-    {
-      id: 'SUP-1048',
-      subject: 'Payment processed twice',
-      customer: 'Taylor Smith',
-      email: 'taylor@example.com',
-      category: 'Billing',
-      priority: 'Critical',
-      status: 'Open',
-      createdAt: 'October 13, 2026',
-      description:
-        'My recent purchase appears to have been charged twice. Please help me verify the transactions.',
-    },
-    {
-      id: 'SUP-1051',
-      subject: 'Application loading slowly',
-      customer: 'Sam Wilson',
-      email: 'sam@example.com',
-      category: 'Technical',
-      priority: 'Medium',
-      status: 'Open',
-      createdAt: 'October 13, 2026',
-      description:
-        'The application takes a long time to load pages. The issue happens across multiple sections.',
-    },
-    {
-      id: 'SUP-1036',
-      subject: 'Update profile information',
-      customer: 'Jamie Lee',
-      email: 'jamie@example.com',
-      category: 'Account',
-      priority: 'Low',
-      status: 'Resolved',
-      createdAt: 'October 9, 2026',
-      description:
-        'I needed help updating the information on my profile.',
-    },
-    {
-      id: 'SUP-1054',
-      subject: 'Unable to download invoice',
-      customer: 'Chris Patel',
-      email: 'chris@example.com',
-      category: 'Billing',
-      priority: 'High',
-      status: 'In Progress',
-      createdAt: 'October 13, 2026',
-      description:
-        'I can view my invoice but the download option does not work.',
-    },
-  ];
-
-  ticket: WorkspaceTicket | undefined = this.mockTickets.find(
-    item => item.id === this.ticketId,
-  );
-
-  selectedStatus: AgentStatus | '' = this.ticket?.status ?? '';
+  ticket: WorkspaceTicket | undefined;
+  selectedStatus: AgentStatus | '' = '';
   draftReply = '';
   feedbackMessage = '';
   feedbackType: 'success' | 'warning' = 'success';
+  messages: WorkspaceMessage[] = [];
 
-  readonly messages: WorkspaceMessage[] = [
-    {
-      sender: 'Alex Morgan',
-      role: 'Customer',
-      message:
-        'I cannot get past the login screen after entering my credentials.',
-      time: 'Today, 9:30 AM',
-    },
-    {
-      sender: 'Support Agent',
-      role: 'Agent',
-      message:
-        'Thanks for reporting this. Could you confirm whether you see an error message on the screen?',
-      time: 'Today, 10:15 AM',
-    },
-    {
-      sender: 'Alex Morgan',
-      role: 'Customer',
-      message:
-        'There is no error message. The page just stays there after I click Sign In.',
-      time: 'Today, 10:32 AM',
-    },
-  ];
+  loadingTicket = false;
+  loadingMessages = false;
+  sendingReply = false;
+  updatingStatus = false;
 
-  generateDemoDraft(): void {
-    if (!this.ticket) {
+  generatingDraft = false;
+
+  ngOnInit(): void {
+    if (!Number.isInteger(this.ticketId) || this.ticketId <= 0) {
+      this.showFeedback('Invalid ticket ID.', 'warning');
       return;
     }
 
-    this.draftReply =
-      `Hi ${this.ticket.customer.split(' ')[0]},\n\n` +
-      `Thank you for contacting SupportIQ about "${this.ticket.subject}". ` +
-      'We understand the inconvenience and are reviewing the details you provided. ' +
-      'We will update you as soon as we have more information.\n\n' +
-      'Thank you for your patience,\nSupport Team';
+    this.loadTicket();
+  }
 
-    this.feedbackType = 'warning';
-    this.feedbackMessage =
-      'Demo suggestion generated locally. This is not a response from the AI backend.';
+  loadTicket(): void {
+    this.loadingTicket = true;
+
+    this.ticketService.getAssignedTicketById(this.ticketId)
+      .pipe(finalize(() => {
+        this.loadingTicket = false;
+        this.cdr.detectChanges();
+      }))
+      .subscribe({
+        next: response => {
+          this.ticket = this.mapTicket(response);
+          this.selectedStatus = this.ticket.status;
+          this.loadMessages();
+        },
+        error: error => {
+          this.showFeedback(
+            error.status === 401
+              ? 'Session expired. Please log in again.'
+              : error.status === 403
+                ? 'Agent access required.'
+                : 'Ticket not found or not assigned to you.',
+            'warning'
+          );
+        }
+      });
+  }
+
+  private mapTicket(ticket: TicketResponse): WorkspaceTicket {
+    return {
+      id: `#${ticket.ticketId}`,
+      subject: ticket.subject,
+      customer: ticket.customerName ||  `Customer #${ticket.customerId}`,
+      email: ticket.customerEmail || 'N/A',
+      category: ticket.categoryName || (ticket.categoryId ? 
+         `Category #${ticket.categoryId}` : 'Uncategorized'),
+      priority: ticket.priority,
+      status: this.toDisplayStatus(ticket.status),
+      createdAt: new Date(ticket.createdOn).toLocaleString(),
+      description: ticket.description
+    };
+  }
+
+  private toDisplayStatus(status: string): AgentStatus {
+    switch (status.replace(/\s/g, '').toLowerCase()) {
+      case 'inprogress':
+        return 'In Progress';
+      case 'resolved':
+        return 'Resolved';
+      case 'closed':
+        return 'Closed';
+      default:
+        return 'Open';
+    }
+  }
+
+  loadMessages(): void {
+    this.loadingMessages = true;
+
+    this.ticketService.getMessages(this.ticketId)
+      .pipe(finalize(() => {
+        this.loadingMessages = false;
+        this.cdr.detectChanges();
+      }))
+      .subscribe({
+        next: response => {
+          this.messages = response.map(message =>
+            this.mapMessage(message)
+          );
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          this.showFeedback(
+            error.status === 403
+              ? 'You do not have access to this conversation.'
+              : 'Unable to load conversation messages.',
+            'warning'
+          );
+        }
+      });
+  }
+
+  private mapMessage(message: TicketMessage): WorkspaceMessage {
+    const senderType = message.senderType.toLowerCase();
+
+    return {
+      sender: message.senderName || `${message.senderType} #${message.senderId}`,
+      role: senderType === 'customer' ? 'Customer' : 'Agent',
+      message: message.messageText,
+      time: new Date(message.createdOn).toLocaleString()
+    };
+  }
+
+  generateDemoDraft(): void {
+    if (!this.ticket || this.generatingDraft) return;
+
+    this.generatingDraft = true;
+    this.feedbackMessage = '';
+
+    this.ticketService.generateAIReply(this.ticketId)
+      .pipe(finalize(() => {
+        this.generatingDraft = false;
+        this.cdr.detectChanges();
+      }))
+      .subscribe({
+        next: response => {
+          this.draftReply = response.suggestedResponse;
+          this.showFeedback('AI-generated draft loaded. Review before sending.', 'success');
+        },
+        error: error => {
+          this.showFeedback(
+            error.error?.message ?? 'Unable to generate AI draft.',
+            'warning'
+          );
+        }
+      });
   }
 
   updateStatus(): void {
-    if (!this.ticket || !this.selectedStatus) {
+    if (!this.ticket || !this.selectedStatus || this.updatingStatus) {
       return;
     }
 
-    this.ticket = {
-      ...this.ticket,
-      status: this.selectedStatus,
-    };
+    this.updatingStatus = true;
 
-    this.feedbackType = 'warning';
-    this.feedbackMessage =
-      'Demo status updated locally only. The database has not changed.';
+    this.ticketService.updateTicketStatus(
+      this.ticketId,
+      this.selectedStatus
+    )
+      .pipe(finalize(() => {
+        this.updatingStatus = false;
+        this.cdr.detectChanges();
+      }))
+      .subscribe({
+        next: response => {
+          if (this.ticket) {
+            this.ticket = this.mapTicket(response);
+            this.selectedStatus = this.ticket.status;
+          }
+
+          this.showFeedback('Ticket status saved successfully.', 'success');
+        },
+        error: error => {
+          this.showFeedback(
+            error.error?.message ?? 'Unable to update ticket status.',
+            'warning'
+          );
+        }
+      });
   }
 
   sendReply(): void {
-    if (!this.draftReply.trim()) {
-      this.feedbackType = 'warning';
-      this.feedbackMessage = 'Write or generate a reply before sending.';
+    const messageText = this.draftReply.trim();
+
+    if (!messageText) {
+      this.showFeedback('Write a reply before sending.', 'warning');
       return;
     }
 
-    this.feedbackType = 'warning';
-    this.feedbackMessage =
-      'Demo only: no reply was sent. Messaging will be connected to the backend later.';
+    if (this.sendingReply) return;
+
+    this.sendingReply = true;
+
+    this.ticketService.sendMessage(this.ticketId, messageText)
+      .pipe(finalize(() => {
+        this.sendingReply = false;
+        this.cdr.detectChanges();
+      }))
+      .subscribe({
+        next: response => {
+          this.messages = [...this.messages, this.mapMessage(response)];
+          this.draftReply = '';
+          this.showFeedback('Reply sent successfully.', 'success');
+        },
+        error: error => {
+          this.showFeedback(
+            error.error?.message ?? 'Unable to send reply.',
+            'warning'
+          );
+        }
+      });
+  }
+
+  private showFeedback(
+    message: string,
+    type: 'success' | 'warning'
+  ): void {
+    this.feedbackMessage = message;
+    this.feedbackType = type;
+    this.cdr.detectChanges();
   }
 
   getStatusClass(status: AgentStatus): string {

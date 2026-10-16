@@ -18,7 +18,11 @@
     </div>
   }
 
-  @if (ticket; as currentTicket) {
+  @if(loadingTicket){
+    <div class="workspace-card">
+      Loading ticket details...
+    </div>
+  }@else if (ticket; as currentTicket) {
     <header class="workspace-header">
       <div>
         <div class="ticket-reference">{{ currentTicket.id }}</div>
@@ -71,6 +75,12 @@
           </div>
 
           <div class="conversation-list">
+            @if (loadingMessages) {
+              <p class="text-muted">Loading conversation...</p>
+            } @else if (messages.length === 0) {
+              <p class="text-muted">No messages yet.</p>
+            }
+
             @for (message of messages; track $index) {
               <article class="conversation-message">
                 <div class="message-avatar"
@@ -100,7 +110,7 @@
               <h2>AI Reply Assistant</h2>
               <p>Generate a draft, review it, and edit it before sending.</p>
             </div>
-            <span class="demo-label">DEMO</span>
+            <span class="demo-label">AI ASSISTED</span>
           </div>
 
           <div class="ai-disclaimer">
@@ -120,16 +130,19 @@
           </textarea>
 
           <div class="reply-actions">
-            <button type="button" class="generate-button"
+            <button type="button" 
+                    class="generate-button"
+                    [disabled]="generatingDraft"
                     (click)="generateDemoDraft()">
               <i class="bi bi-stars"></i>
-              Generate Demo Draft
+              {{ generatingDraft ? 'Generating...' : 'Generate AI  Draft' }}
             </button>
 
             <button type="button" class="send-button"
+                    [disabled]="sendingReply || !draftReply.trim()"
                     (click)="sendReply()">
               <i class="bi bi-send"></i>
-              Send Reply
+              {{ sendingReply ? 'Sending...' : 'Send Reply' }}
             </button>
           </div>
         </section>
@@ -192,7 +205,7 @@
           </button>
 
           <p class="status-help">
-            Demo changes stay in memory and are not saved to the database.
+            Status changes are saved to the server.
           </p>
         </section>
 

@@ -29,7 +29,7 @@
         </p>
       </div>
 
-      <span class="status-badge" [class]="getStatusClass(currentTicket.status)">
+      <span class="status-badge" [ngClass]="getStatusClass(currentTicket.status)">
         {{ currentTicket.status }}
       </span>
     </header>
