@@ -207,6 +207,11 @@ namespace SupportIQ.Infrastructure.Services
                 throw new InvalidOperationException("Agent not found.");
             }
 
+            if(string.Equals(agent.Availability, "Away", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("THis agent is amrked Away and cannot receive new tickets.");
+            }
+
             var ticket = await _context.Tickets
                 .FirstOrDefaultAsync(t => t.TicketId == ticketId);
 
@@ -221,6 +226,29 @@ namespace SupportIQ.Infrastructure.Services
             }
 
             ticket.AssignedAgentId = agentId;
+            ticket.UpdatedOn = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+
+            return MapToResponse(ticket);
+        }
+
+        public async Task<TicketResponse?> UnassignTicketAsync(int ticketId)
+        {
+            var ticket = await _context.Tickets
+                .FirstOrDefaultAsync(t => t.TicketId == ticketId);  
+
+            if(ticket is null)
+            {
+                return null;
+            }
+
+            if(ticket.Status is "Resolved" or "Closed")
+            {
+                throw new InvalidOperationException("Ticket is already resolved or closed.");
+            }
+
+            ticket.AssignedAgentId = null;
             ticket.UpdatedOn = DateTime.Now;
 
             await _context.SaveChangesAsync();

@@ -152,9 +152,15 @@ export class TicketService {
   }
 
   assignTicket(ticketId: number, agentId: number): Observable<TicketResponse> {
-    return this.http.put<TicketResponse>(
+    return this.http.post<TicketResponse>(
       `${this.baseUrl}/${ticketId}/assign`,
       { agentId }
+    );
+  }
+
+  unassignTicket(ticketId: number): Observable<TicketResponse> {
+    return this.http.delete<TicketResponse>(
+      `${this.baseUrl}/${ticketId}/assign`
     );
   }
 }

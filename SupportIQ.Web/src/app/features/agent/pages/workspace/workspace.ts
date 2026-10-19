@@ -114,4 +114,10 @@ export class Workspace implements OnInit {
   setStatusFilter(status: string): void {
     this.selectedStatus = status;
   }
+
+  scrollToTickets(): void {
+    document.getElementById('ticket-queue')?.scrollIntoView({ behavior: 'smooth',
+    block: 'start'
+    });
+  }
 }

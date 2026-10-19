@@ -155,6 +155,12 @@ export class CustomerDashboard implements OnInit {
     return `priority-${priority.toLowerCase()}`;
   }
 
+  scrollToTickets(): void {
+    document.getElementById('tickets-section')?.scrollIntoView({ behavior: 'smooth',
+    block: 'start'
+    });
+  }
+
   logOut(): void {
     this.authService.logout();
     void this.router.navigateByUrl('/auth');

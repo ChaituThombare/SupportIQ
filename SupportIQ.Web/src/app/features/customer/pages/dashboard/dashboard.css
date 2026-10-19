@@ -723,3 +723,16 @@
   color: #4267ed;
   text-decoration: underline;
 }
+
+.sidebar-nav-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tickets-section {
+  scroll-margin-top: 20px;
+}

@@ -210,21 +210,19 @@ export class AdminWorkspace implements OnInit {
       return;
     }
 
-    if(agentId === null){
-      this.assignmentError = 'Unassigning tickets is not supported by the current API.';
-      return;
-    }
-
-    if(!Number.isInteger(agentId) || agentId <= 0) {
-      this.assignmentError = 'Invalid agent ID.';
+    if(agentId !== null && (!Number.isInteger(agentId) || agentId <= 0)) {
+      this.assignmentError = 'Please select a valid range.';
       this.loadTickets();
       return;
     }
 
     this.assigningTicketId = ticket.id;
     
-    this.ticketService
-      .assignTicket(ticket.id, agentId)
+    const request$ = agentId === null 
+      ? this.ticketService.unassignTicket(ticket.id) 
+      : this.ticketService.assignTicket(ticket.id, agentId);
+
+    request$
       .pipe(
         finalize(() => {
           this.assigningTicketId = null;
@@ -239,7 +237,10 @@ export class AdminWorkspace implements OnInit {
         error: error => {
           this.assignmentError =
             error.error?.message ||
-              'Ticket assignment failed. Please try again.'
+            (agentId === null
+              ? 'Unable to unassign ticket.'
+              : 'Ticket assignment failed.');
+        
           this.loadTickets();
           this.cdr.detectChanges();
         }
@@ -261,7 +262,7 @@ export class AdminWorkspace implements OnInit {
       return 0;
     }
     
-    return (this.getAgentActiveTickets(agent) / maximum) * 100;
+    return Number(((this.getAgentActiveTickets(agent) / maximum) * 100).toFixed(2));
   }
 
   getPriorityClass(priority: string): string {

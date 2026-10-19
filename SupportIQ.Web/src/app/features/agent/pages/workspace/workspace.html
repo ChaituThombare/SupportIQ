@@ -12,10 +12,15 @@
         <i class="bi bi-grid-1x2"></i>
         Overview
       </a>
-      <a class="nav-item" href="#ticket-queue">
+
+      <button 
+        type="button"
+        class="nav-item sidebar-nav-button"
+        (click)="scrollToTickets()"
+        >
         <i class="bi bi-inbox"></i>
         My Ticket Queue
-      </a>
+      </button>
     </nav>
 
     <div class="agent-sidebar-bottom">

@@ -1,4 +1,5 @@
-﻿using SupportIQ.Application.DTOs.Tickets;
+﻿using AutoMapper.Configuration.Conventions;
+using SupportIQ.Application.DTOs.Tickets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,5 +29,7 @@ namespace SupportIQ.Application.Interfaces
         Task<TicketResponse?> UpdateTicketStatusAsync(int ticketId, string status, int userId, bool isAdmin);
 
         Task<TicketResponse?> UpdateTicketPriorityAsync(int ticketId, string priority, int userId, bool isAdmin);
+
+        Task<TicketResponse?> UnassignTicketAsync(int ticketId);
     }
 }

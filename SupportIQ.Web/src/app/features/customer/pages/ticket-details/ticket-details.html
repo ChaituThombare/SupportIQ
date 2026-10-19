@@ -88,7 +88,7 @@
               @for (message of messages; track message.messageId) {
                 <article class="message-item">
                   <div class="message-avatar" [class.agent-avatar]="message.senderType !== 'Customer'">
-                    {{ message.senderType }}
+                    {{ message.senderType.charAt(0) }}
                   </div>
 
                   <div class="message-content">

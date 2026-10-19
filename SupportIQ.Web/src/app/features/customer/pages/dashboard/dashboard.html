@@ -8,14 +8,19 @@
     <div class="sidebar-label">WORKSPACE</div>
 
     <nav class="sidebar-nav">
-      <a class="nav-item active" href="/customer/dashboard">
+      <a class="nav-item active" routerLink="/customer/dashboard">
         <i class="bi bi-grid-1x2"></i>
         Dashboard
       </a>
-      <a class="nav-item" href="/customer/dashboard">
+      
+      <button 
+        type="button"
+        class="nav-item sidebar-nav-button" 
+        (click)="scrollToTickets()"
+        >
         <i class="bi bi-ticket-perforated"></i>
         My Tickets
-      </a>
+      </button>
     </nav>
 
     <div class="sidebar-bottom">
@@ -111,7 +116,7 @@
       </article>
     </section>
 
-    <section class="tickets-section">
+    <section class="tickets-section" id="tickets-section">
       <div class="section-heading">
         <div>
           <h3>Recent Tickets</h3>

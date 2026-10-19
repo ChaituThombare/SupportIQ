@@ -175,7 +175,7 @@ namespace SupportIQ.API.Controllers
         {
             var agents = await context.Users
                 .AsNoTracking()
-                .Where(u => u.IsActive && u.Role.RoleName == "Agent")
+                .Where(u => u.IsActive && u.Role.RoleName == "Agent" && u.Availability != "Away")
                 .OrderBy(u => u.Name)
                 .Select(u => new
                 {
@@ -203,6 +203,33 @@ namespace SupportIQ.API.Controllers
                         message = "Ticket not found."
                     });
                 }
+                return Ok(ticket);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("{id:int}/assign")]
+        public async Task<IActionResult> UnassignTicket(int id)
+        {
+            try
+            {
+                var ticket = await _ticketService.UnassignTicketAsync(id);
+
+                if (ticket is null)
+                {
+                    return NotFound(new
+                    {
+                        message = "Ticket not found."
+                    });
+                }
+
                 return Ok(ticket);
             }
             catch (InvalidOperationException ex)
