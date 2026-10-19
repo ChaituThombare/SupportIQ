@@ -16,6 +16,7 @@ namespace SupportIQ.Domain.Entities
         public bool IsActive { get; set; } = true;
         public DateTime CreatedOn { get; set; } = DateTime.Now;
         public DateTime? LastLogin { get; set; }
+        public string Availability { get; set; } = "Available";
 
         //Navigation property
         public Role Role { get; set; } = null!;

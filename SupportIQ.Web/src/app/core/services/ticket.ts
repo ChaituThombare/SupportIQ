@@ -14,6 +14,8 @@ export interface TicketResponse {
   categoryName: string | null;
   priority: string;
   status: string;
+  assignedAgentId?: number | null;
+  assignedAgentName?: string | null;
   isAIClassified: boolean;
   createdOn: string;
   updatedOn?: string | null;
@@ -48,12 +50,24 @@ export interface SendMessageRequest {
   messageText: string;
 }
 
+export interface AdminAgent{
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface AssignTicketRequest{
+  agentId: number;
+}
 @Injectable({
   providedIn: 'root'
 })
 export class TicketService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/Ticket`;
+
+  assignedAgentId? : number | null;
+  assignedAgentName? : string | null;
 
   getMyTickets(): Observable<TicketResponse[]> {
     return this.http.get<TicketResponse[]>(
@@ -111,10 +125,36 @@ export class TicketService {
     );
   }
 
+  updateTicketPriority(id: number, priority: string): Observable<TicketResponse> {
+    return this.http.put<TicketResponse>(
+      `${this.baseUrl}/${id}/priority`,
+      { priority }
+    );
+  }
+  
   generateAIReply(ticketId: number): Observable<AITicketAnalysisResponse> {
     return this.http.post<AITicketAnalysisResponse>(
       `${this.baseUrl}/${ticketId}/ai-analysis`,
       {}
+    );
+  }
+
+  getAdminTickets(): Observable<TicketResponse[]> {
+    return this.http.get<TicketResponse[]>(
+      `${this.baseUrl}/admin`
+    );
+  }
+
+  getAdminAgents(): Observable<AdminAgent[]> {
+    return this.http.get<AdminAgent[]>(
+      `${this.baseUrl}/admin/agents`
+    );
+  }
+
+  assignTicket(ticketId: number, agentId: number): Observable<TicketResponse> {
+    return this.http.put<TicketResponse>(
+      `${this.baseUrl}/${ticketId}/assign`,
+      { agentId }
     );
   }
 }

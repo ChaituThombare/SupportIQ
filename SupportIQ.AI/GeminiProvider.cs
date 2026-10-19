@@ -1,9 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json;
 using SupportIQ.Application.Interfaces;
-using System.Collections.Generic;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 
 namespace SupportIQ.AI
 {
@@ -12,31 +11,39 @@ namespace SupportIQ.AI
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
 
-        public GeminiProvider(HttpClient httpClient, IConfiguration configuration)
+        public GeminiProvider(
+            HttpClient httpClient,
+            IConfiguration configuration)
         {
             _httpClient = httpClient;
             _configuration = configuration;
         }
 
-        public async Task<AIAnalysisResult> AnalyzeTicketAsync(string subject, string description, CancellationToken cancellationToken = default)
+        public async Task<AIAnalysisResult> AnalyzeTicketAsync(
+            string subject,
+            string description,
+            CancellationToken cancellationToken = default)
         {
             var apiKey = _configuration["AI:ApiKey"];
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                throw new InvalidOperationException("API key is not configured.");
+                throw new InvalidOperationException(
+                    "Gemini API key is not configured. Set AI:ApiKey using User Secrets or an environment variable.");
             }
 
-            var model = _configuration["AI:Model"] ?? "gemini-3.8-flash";
+            var model = _configuration["AI:Model"];
 
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
+            if (string.IsNullOrWhiteSpace(model))
+            {
+                model = "gemini-3.8-flash";
+            }
 
-            using var request = new HttpRequestMessage(
-                HttpMethod.Post, url);
+            var url =
+                $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
 
-            request.Headers.Add("x-goog-api-key", apiKey);
-
-            request.Content = JsonContent.Create(new
+            // Keep the prompt focused to reduce unnecessary token generation.
+            var requestBody = new
             {
                 systemInstruction = new
                 {
@@ -45,44 +52,34 @@ namespace SupportIQ.AI
                         new
                         {
                             text = """
-                            
-                            You are an expert customer-support ticket classification AI.
+                                You are an expert customer-support ticket classification assistant.
 
-                            Analyze the ticket subject and description carefully. 
-                            Return only a valid JSON object containing: Category, Priority, SuggestedResponse.
+                                Analyze the customer's ticket and return only a valid JSON object
+                                containing Category, Priority, and SuggestedResponse.
 
-                            Allowed categories:
-                            Payment, Order, Delivery, Product, Refund, Account, Technical, Other.
+                                Allowed categories:
+                                Payment, Order, Delivery, Product, Refund, Account, Technical, Other.
 
-                            Allowed priorities:
-                            Low, Medium, High, Critical.
+                                Allowed priorities:
+                                Low, Medium, High, Critical.
 
-                            Priority guidelines:
-                            - Critical: Severe service outage, widespread impact, security incident, or an urgetn issue with severe consequences requiring immediate attention.
-                            - High: Significant customer impact, blocked essential functionality, failed critical transactions, or a genuinely time-sensitive deadline
-                            - Medium: A normal issue that affects the customer but has a reasonable
-                              workaround or no immediate severe consequences.
-                            - Low: Minor inconvenience, general question, cosmetic issue, or
-                              non-urgent request.
+                                Priority guidelines:
+                                - Critical: Severe outage, security incident, widespread impact,
+                                  or serious consequences requiring immediate attention.
+                                - High: Significant customer impact, blocked essential functionality,
+                                  failed important transactions, or a genuine urgent deadline.
+                                - Medium: A normal issue with a reasonable workaround.
+                                - Low: A minor inconvenience, general question, or non-urgent request.
 
-                            Consider:
-                            1. Actual impact and severity, not just words like "urgent" or "ASAP".
-                            2. Deadlines, dates, times, and time-sensitive commitments mentioned
-                               in the subject or description.
-                            3. Whether a deadline is approaching, has passed, or is far away,
-                               using the current date and time supplied with the ticket.
-                            4. Whether the customer is unable to use an essential service or
-                               complete an important transaction.
-                            5. The consequences of delaying resolution.
-                            
-                            Do not automatically assign High or Critical just because a customer uses urgent language. Do not invent deadlines or assume facts not provided. If the deadline is ambiguous, use the available evidence and choose a reasonable priority.
-                           
-                            Category must match one of the allowed values.
-                            Priority must match one of the allowed values.
-                            SuggestedResponse must be a polite draft for a human support agent to review. Never claim an action has already been performed.
+                                Assess actual impact and urgency. Do not automatically assign
+                                High or Critical because the customer uses words such as urgent.
+                                Do not invent facts or deadlines.
 
-                            Return valid JSON only. Do not include Markdown or explanations.
-                            """
+                                SuggestedResponse must be a polite draft for a human agent to review.
+                                Never claim that an action has already been completed.
+
+                                Return valid JSON only. Do not include Markdown or explanations.
+                                """
                         }
                     }
                 },
@@ -96,11 +93,13 @@ namespace SupportIQ.AI
                             new
                             {
                                 text = $"""
-                                Current date and time: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}
+                                    Current date and time:
+                                    {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}
 
-                                Subject: {subject}
-                                Description: {description}
-                                """
+                                    Subject: {subject}
+
+                                    Description: {description}
+                                    """
                             }
                         }
                     }
@@ -108,26 +107,132 @@ namespace SupportIQ.AI
                 generationConfig = new
                 {
                     responseMimeType = "application/json",
-                    temperature = 0.2
+                    temperature = 0.2,
+                    maxOutputTokens = 512
                 }
-            });
+            };
 
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
+            // Serialize once. A fresh HTTP request/content is created on each retry.
+            var requestJson = JsonSerializer.Serialize(requestBody);
 
-            if (!response.IsSuccessStatusCode)
+            using var timeoutCts =
+                CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken);
+
+            // Total time limit, including retries and backoff delays.
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(55));
+
+            const int maxAttempts = 3;
+
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                timeoutCts.Token.ThrowIfCancellationRequested();
 
-                throw new HttpRequestException($"Gemini API returned {(int)response.StatusCode}" + $"{response.ReasonPhrase}. Response body: {errorBody}");
+                using var request = new HttpRequestMessage(
+                    HttpMethod.Post,
+                    url);
+
+                request.Headers.Add("x-goog-api-key", apiKey);
+
+                request.Content = new StringContent(
+                    requestJson,
+                    Encoding.UTF8,
+                    "application/json");
+
+                HttpResponseMessage response;
+
+                try
+                {
+                    response = await _httpClient.SendAsync(
+                        request,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        timeoutCts.Token);
+                }
+                catch (OperationCanceledException)
+                    when (!cancellationToken.IsCancellationRequested)
+                {
+                    // The overall timeout expired, rather than the caller cancelling.
+                    throw;
+                }
+                catch (HttpRequestException ex)
+                    when (ex.StatusCode is null && attempt < maxAttempts)
+                {
+                    // Retry network failures, but only a limited number of times.
+                    await Task.Delay(
+                        TimeSpan.FromSeconds(
+                            Math.Pow(2, attempt - 1)),
+                        timeoutCts.Token);
+
+                    continue;
+                }
+                catch (HttpRequestException ex)
+                {
+                    throw new HttpRequestException(
+                        $"Could not reach Gemini after {attempt} attempt(s): {ex.Message}",
+                        ex,
+                        ex.StatusCode);
+                }
+
+                using (response)
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        await using var responseStream =
+                            await response.Content.ReadAsStreamAsync(
+                                timeoutCts.Token);
+
+                        using var document =
+                            await JsonDocument.ParseAsync(
+                                responseStream,
+                                cancellationToken: timeoutCts.Token);
+
+                        return ParseResponse(document.RootElement);
+                    }
+
+                    var errorBody =
+                        await response.Content.ReadAsStringAsync(
+                            timeoutCts.Token);
+
+                    var statusCode = response.StatusCode;
+                    var statusNumber = (int)statusCode;
+
+                    var isTransient =
+                        statusCode == HttpStatusCode.RequestTimeout ||
+                        statusNumber == 429 ||
+                        statusNumber >= 500;
+
+                    if (isTransient && attempt < maxAttempts)
+                    {
+                        response.Dispose();
+
+                        // Exponential backoff: 1 second, then 2 seconds.
+                        await Task.Delay(
+                            TimeSpan.FromSeconds(
+                                Math.Pow(2, attempt - 1)),
+                            timeoutCts.Token);
+
+                        continue;
+                    }
+
+                    // Includes the original upstream error in the backend log
+                    // via the exception. The controller returns a safe message.
+                    throw new HttpRequestException(
+                        $"Gemini API returned HTTP {statusNumber} " +
+                        $"({response.ReasonPhrase}). Response body: {errorBody}",
+                        null,
+                        statusCode);
+                }
             }
 
-            using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            throw new InvalidOperationException(
+                "Gemini analysis ended without a successful response.");
+        }
 
-            using var document = await JsonDocument.ParseAsync(responseStream, cancellationToken: cancellationToken);
-
-            var root = document.RootElement;
-
-            if(!root.TryGetProperty("candidates", out var candidates) || candidates.ValueKind != JsonValueKind.Array || candidates.GetArrayLength() == 0)
+        private static AIAnalysisResult ParseResponse(JsonElement root)
+        {
+            if (!root.TryGetProperty("candidates", out var candidates) ||
+                candidates.ValueKind != JsonValueKind.Array ||
+                candidates.GetArrayLength() == 0)
             {
                 var blockReason = "unknown";
 
@@ -136,29 +241,35 @@ namespace SupportIQ.AI
                 {
                     blockReason = block.GetString() ?? "unknown";
                 }
-                throw new InvalidOperationException($"AI provider returned no candidates. Block reason {blockReason}");
+
+                throw new InvalidOperationException(
+                    $"Gemini returned no candidates. Block reason: {blockReason}.");
             }
 
             var candidate = candidates[0];
 
-            var finishReason = candidate.TryGetProperty("finishReason", out var finish) ? finish.GetString() ?? "unknown" : "unknown";
+            var finishReason =
+                candidate.TryGetProperty("finishReason", out var finish)
+                    ? finish.GetString() ?? "unknown"
+                    : "unknown";
 
-            if (!candidate.TryGetProperty("content", out var content) || 
-               !content.TryGetProperty("parts", out var parts) ||
-               parts.ValueKind != JsonValueKind.Array)
+            if (!candidate.TryGetProperty("content", out var content) ||
+                !content.TryGetProperty("parts", out var parts) ||
+                parts.ValueKind != JsonValueKind.Array)
             {
-                throw new InvalidOperationException($"Gemini returned no text content. Finish reason: {finishReason}.");
+                throw new InvalidOperationException(
+                    $"Gemini returned no text content. Finish reason: {finishReason}.");
             }
 
             var textParts = new List<string>();
 
-            foreach(var part in parts.EnumerateArray())
+            foreach (var part in parts.EnumerateArray())
             {
                 if (part.TryGetProperty("text", out var textElement))
                 {
                     var partText = textElement.GetString();
 
-                    if(!string.IsNullOrWhiteSpace(partText))
+                    if (!string.IsNullOrWhiteSpace(partText))
                     {
                         textParts.Add(partText);
                     }
@@ -167,30 +278,37 @@ namespace SupportIQ.AI
 
             var json = string.Join("\n", textParts).Trim();
 
-            if(string.IsNullOrWhiteSpace(json))
+            if (string.IsNullOrWhiteSpace(json))
             {
-                throw new InvalidOperationException($"Gemini returned empty text. Finish reason: {finishReason}.");
+                throw new InvalidOperationException(
+                    $"Gemini returned empty text. Finish reason: {finishReason}.");
             }
 
             AIAnalysisResult? result;
+
             try
             {
-                result = JsonSerializer.Deserialize<AIAnalysisResult>(json, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                result = JsonSerializer.Deserialize<AIAnalysisResult>(
+                    json,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
             }
-            catch (JsonException)
+            catch (JsonException ex)
             {
-                throw new InvalidOperationException("Gemini returned text that could not be parsed as JSON.");
+                throw new InvalidOperationException(
+                    "Gemini returned text that could not be parsed as JSON.",
+                    ex);
             }
 
-            if (result == null || 
+            if (result is null ||
                 string.IsNullOrWhiteSpace(result.Category) ||
                 string.IsNullOrWhiteSpace(result.Priority) ||
                 string.IsNullOrWhiteSpace(result.SuggestedResponse))
             {
-                throw new InvalidOperationException("Gemini JSON is missing category, priority, or suggestedResponse.");
+                throw new InvalidOperationException(
+                    "Gemini JSON is missing Category, Priority, or SuggestedResponse.");
             }
 
             return result;

@@ -1,27 +1,165 @@
+<app-admin-navigation></app-admin-navigation>
 
 <div class="management-page">
+  <!-- Header -->
   <header class="page-header">
     <div>
       <span class="eyebrow">ADMINISTRATION / TEAM</span>
       <h1>Agent Management</h1>
-      <p>Manage your support team, monitor availability and review workloads.</p>
+      <p>
+        Create agent accounts, manage availability and control account access.
+      </p>
     </div>
 
-    <span class="demo-label">
-      <span></span>
-      Demo data
-    </span>
+    <div class="page-actions">
+      <span class="demo-label">
+        <span></span>
+        Live API data
+      </span>
+
+      <button
+        type="button"
+        class="primary-button"
+        (click)="openCreateAgentForm()"
+        [disabled]="showCreateAgentForm"
+      >
+        <i class="bi bi-person-plus"></i>
+        Add Agent
+      </button>
+    </div>
   </header>
+
+  <!-- Load Error -->
+  <div class="alert alert-danger" role="alert" *ngIf="errorMessage">
+    {{ errorMessage }}
+
+    <button
+      class="btn btn-sm btn-outline-danger ms-2"
+      type="button"
+      (click)="loadAgents()"
+    >
+      Retry
+    </button>
+  </div>
+
+  <!-- Action Error -->
+  <div class="alert alert-warning" role="alert" *ngIf="actionError">
+    {{ actionError }}
+  </div>
+
+  <!-- Success Message -->
+  <div class="alert alert-success" role="status" *ngIf="actionMessage">
+    {{ actionMessage }}
+  </div>
+
+  <!-- Create Agent Form -->
+  <section class="create-agent-panel" *ngIf="showCreateAgentForm">
+    <div class="panel-heading">
+      <div>
+        <h2>Create Agent Account</h2>
+        <p>
+          New accounts will receive the Agent authorization role.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="close-form-button"
+        aria-label="Close create agent form"
+        [disabled]="creatingAgent"
+        (click)="cancelCreateAgent()"
+      >
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <form (ngSubmit)="createAgent()">
+      <div class="create-grid">
+        <div class="form-field">
+          <label for="newAgentName">Full name</label>
+          <input
+            id="newAgentName"
+            type="text"
+            class="form-control"
+            name="newAgentName"
+            [(ngModel)]="newAgentName"
+            required
+            minlength="2"
+            maxlength="100"
+            autocomplete="name"
+            placeholder="Enter agent's name"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="newAgentEmail">Email address</label>
+          <input
+            id="newAgentEmail"
+            type="email"
+            class="form-control"
+            name="newAgentEmail"
+            [(ngModel)]="newAgentEmail"
+            required
+            maxlength="100"
+            autocomplete="email"
+            placeholder="agent@example.com"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="newAgentPassword">Initial password</label>
+          <input
+            id="newAgentPassword"
+            type="password"
+            class="form-control"
+            name="newAgentPassword"
+            [(ngModel)]="newAgentPassword"
+            required
+            minlength="8"
+            maxlength="128"
+            autocomplete="new-password"
+            placeholder="At least 8 characters"
+          />
+          <small>Share this password with the agent securely.</small>
+        </div>
+      </div>
+
+      <div class="create-form-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="cancelCreateAgent()"
+          [disabled]="creatingAgent"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="creatingAgent"
+        >
+          <span
+            *ngIf="creatingAgent"
+            class="spinner-border spinner-border-sm me-2"
+            aria-hidden="true"
+          ></span>
+
+          {{ creatingAgent ? 'Creating...' : 'Create Agent' }}
+        </button>
+      </div>
+    </form>
+  </section>
 
   <!-- Overview -->
   <section class="overview-grid">
     <article class="overview-card">
       <div class="overview-top">
-        <span>Total Agents</span>
+        <span>Agent Accounts</span>
         <i class="bi bi-people icon-blue"></i>
       </div>
       <h2>{{ totalAgents }}</h2>
-      <p>Support team members</p>
+      <p>{{ activeAgentAccounts }} active accounts</p>
     </article>
 
     <article class="overview-card">
@@ -30,7 +168,7 @@
         <i class="bi bi-person-check icon-green"></i>
       </div>
       <h2>{{ availableAgents }}</h2>
-      <p>Ready to handle tickets</p>
+      <p>Active accounts marked available</p>
     </article>
 
     <article class="overview-card">
@@ -39,7 +177,7 @@
         <i class="bi bi-clock-history icon-orange"></i>
       </div>
       <h2>{{ busyAgents }}</h2>
-      <p>Currently marked busy</p>
+      <p>Active accounts marked busy</p>
     </article>
 
     <article class="overview-card">
@@ -48,24 +186,30 @@
         <i class="bi bi-ticket-perforated icon-purple"></i>
       </div>
       <h2>{{ totalActiveTickets }}</h2>
-      <p>Across listed agents</p>
+      <p>Assigned and not resolved/closed</p>
     </article>
   </section>
 
-  <!-- Team table -->
+  <!-- Agent List -->
   <section class="team-panel">
     <div class="panel-heading">
       <div>
         <h2>Support Team</h2>
-        <p>Search agents and update their demo settings.</p>
+        <p>
+          Manage availability and account access; counts use live assignments.
+        </p>
       </div>
 
-      <span class="result-count">{{ filteredAgents.length }} agents</span>
+      <span class="result-count">
+        {{ filteredAgents.length }} agents
+      </span>
     </div>
 
+    <!-- Filters -->
     <div class="filters">
       <div class="search-field">
         <i class="bi bi-search"></i>
+
         <input
           type="text"
           [(ngModel)]="searchTerm"
@@ -74,13 +218,10 @@
         />
       </div>
 
-      <select [(ngModel)]="roleFilter" aria-label="Filter by role">
-        <option value="All">All roles</option>
-        <option value="Senior Agent">Senior Agent</option>
-        <option value="Support Agent">Support Agent</option>
-      </select>
-
-      <select [(ngModel)]="availabilityFilter" aria-label="Filter by availability">
+      <select
+        [(ngModel)]="availabilityFilter"
+        aria-label="Filter by availability"
+      >
         <option value="All">All availability</option>
         <option value="Available">Available</option>
         <option value="Busy">Busy</option>
@@ -88,6 +229,17 @@
       </select>
     </div>
 
+    <!-- Loading -->
+    <div class="p-4 text-secondary" *ngIf="loading">
+      <span
+        class="spinner-border spinner-border-sm me-2"
+        role="status"
+        aria-hidden="true"
+      ></span>
+      Loading agents...
+    </div>
+
+    <!-- Table -->
     <div class="table-responsive">
       <table class="table agent-table align-middle">
         <thead>
@@ -96,44 +248,50 @@
             <th>Role</th>
             <th>Availability</th>
             <th>Active Tickets</th>
-            <th>Workload</th>
-            <th>Resolved</th>
+            <th>Relative Workload</th>
+            <th>Resolved / Closed</th>
+            <th>Account</th>
           </tr>
         </thead>
 
         <tbody>
-          <tr *ngFor="let agent of filteredAgents; trackBy: trackByAgentId">
+          <tr
+            *ngFor="let agent of filteredAgents; trackBy: trackByAgentId"
+            [class.inactive-agent-row]="!agent.isActive"
+          >
+            <!-- Agent Information -->
             <td>
               <div class="agent-identity">
                 <div class="agent-avatar">
-                  {{ agent.name.charAt(0) }}
+                  {{ agent.name.charAt(0).toUpperCase() }}
                 </div>
 
                 <div class="agent-details">
                   <strong>{{ agent.name }}</strong>
-                  <span>{{ agent.id }}</span>
+                  <span>AGT-{{ agent.id }}</span>
                   <small>{{ agent.email }}</small>
                 </div>
               </div>
             </td>
 
+            <!-- Authorization Role -->
             <td>
-              <select
-                class="role-select"
-                [ngModel]="agent.role"
-                (ngModelChange)="changeRole(agent, $event)"
-                [attr.aria-label]="'Change role for ' + agent.name"
-              >
-                <option value="Support Agent">Support Agent</option>
-                <option value="Senior Agent">Senior Agent</option>
-              </select>
+              <span class="role-badge">
+                {{ agent.role }}
+              </span>
             </td>
 
+            <!-- Availability -->
             <td>
               <select
                 class="availability-select"
                 [ngModel]="agent.availability"
                 (ngModelChange)="changeAvailability(agent, $event)"
+                [disabled]="
+                  !agent.isActive ||
+                  updatingAgentId === agent.id ||
+                  updatingAgentId !== null
+                "
                 [ngClass]="agent.availability.toLowerCase()"
                 [attr.aria-label]="'Change availability for ' + agent.name"
               >
@@ -141,13 +299,23 @@
                 <option value="Busy">Busy</option>
                 <option value="Away">Away</option>
               </select>
+
+              <small
+                class="text-secondary d-block mt-1"
+                *ngIf="updatingAgentId === agent.id"
+              >
+                Saving...
+              </small>
             </td>
 
+            <!-- Active Tickets -->
             <td>
-              <strong class="ticket-number">{{ agent.activeTickets }}</strong>
-              <span class="capacity-label">of {{ agent.capacity }}</span>
+              <strong class="ticket-number">
+                {{ agent.activeTickets }}
+              </strong>
             </td>
 
+            <!-- Relative Workload -->
             <td class="workload-cell">
               <div class="workload-label">
                 <span>{{ getWorkload(agent) }}%</span>
@@ -159,7 +327,7 @@
                 [attr.aria-valuenow]="getWorkload(agent)"
                 aria-valuemin="0"
                 aria-valuemax="100"
-                [attr.aria-label]="agent.name + ' workload'"
+                [attr.aria-label]="agent.name + ' relative workload'"
               >
                 <div
                   class="progress-bar"
@@ -169,32 +337,83 @@
               </div>
             </td>
 
+            <!-- Resolved / Closed -->
             <td>
               <span class="resolved-number">
                 <i class="bi bi-check-circle"></i>
                 {{ agent.resolvedTickets }}
               </span>
             </td>
+
+            <!-- Activate / Deactivate -->
+            <td>
+              <div class="account-actions">
+                <span
+                  class="account-status"
+                  [class.status-active]="agent.isActive"
+                  [class.status-inactive]="!agent.isActive"
+                >
+                  {{ agent.isActive ? 'Active' : 'Inactive' }}
+                </span>
+
+                <button
+                  type="button"
+                  class="account-action-button"
+                  [class.deactivate-button]="agent.isActive"
+                  [class.activate-button]="!agent.isActive"
+                  [disabled]="
+                    updatingAccountAgentId !== null ||
+                    updatingAgentId !== null ||
+                    (agent.isActive && agent.activeTickets > 0)
+                  "
+                  [title]="
+                    agent.isActive && agent.activeTickets > 0
+                      ? 'Resolve or reassign active tickets before deactivation'
+                      : agent.isActive
+                        ? 'Deactivate this account'
+                        : 'Reactivate this account'
+                  "
+                  (click)="toggleAgentActive(agent)"
+                >
+                  {{
+                    updatingAccountAgentId === agent.id
+                      ? 'Saving...'
+                      : agent.isActive
+                        ? 'Deactivate'
+                        : 'Reactivate'
+                  }}
+                </button>
+              </div>
+            </td>
           </tr>
 
-          <tr *ngIf="filteredAgents.length === 0">
-            <td colspan="6" class="empty-state">
+          <!-- Empty State -->
+          <tr *ngIf="filteredAgents.length === 0 && !loading && !errorMessage">
+            <td colspan="7" class="empty-state">
               <i class="bi bi-people"></i>
               <h3>No agents found</h3>
-              <p>Try another search term or filter.</p>
+              <p>
+                Try a different search or availability filter, or create a new agent.
+              </p>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
+    <!-- Footer -->
     <footer class="table-footer">
-      <span>Showing {{ filteredAgents.length }} of {{ totalAgents }} agents</span>
-      <span>{{ totalResolvedTickets }} total resolved tickets in demo data</span>
+      <span>
+        Showing {{ filteredAgents.length }} of {{ totalAgents }} agent accounts
+      </span>
+
+      <span>
+        {{ totalResolvedTickets }} resolved/closed tickets among current assignments
+      </span>
     </footer>
   </section>
 
-  <!-- Management notes -->
+  <!-- Notes -->
   <section class="management-note">
     <div class="note-icon">
       <i class="bi bi-info-circle"></i>
@@ -203,9 +422,10 @@
     <div>
       <h3>About agent controls</h3>
       <p>
-        Role and availability changes currently update only this page's local mock data.
-        Real account permissions, persistence and workload synchronization will be handled
-        through the backend during integration.
+        New accounts are created with the Agent role and an initial password.
+        Availability is saved in the database. Accounts with active tickets
+        cannot be deactivated until those tickets are resolved or reassigned.
+        Reassign or resolve work first, then deactivate the account.
       </p>
     </div>
   </section>

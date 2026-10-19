@@ -171,6 +171,31 @@ namespace SupportIQ.Infrastructure.Services
                 .ToListAsync();
         }
 
+        public async Task<List<TicketResponse>> GetAdminTicketsAsync()
+        {
+            return await _context.Tickets
+                .AsNoTracking()
+                .OrderByDescending(t => t.CreatedOn)
+                .Select(t => new TicketResponse
+                {
+                    TicketId = t.TicketId,
+                    CustomerId = t.CustomerId,
+                    CustomerName = t.Customer.Name,
+                    CustomerEmail = t.Customer.Email,
+                    Subject = t.Subject,
+                    Description = t.Description,
+                    CategoryId = t.CategoryId,
+                    CategoryName = t.Category != null ? t.Category.CategoryName : null,
+                    Priority = t.Priority,
+                    Status = t.Status,
+                    AssignedAgentId = t.AssignedAgentId,
+                    AssignedAgentName = t.AssignedAgent != null ? t.AssignedAgent.Name : null,
+                    IsAIClassified = t.IsAIClassified,
+                    CreatedOn = t.CreatedOn
+                })
+                .ToListAsync();
+        }
+
         public async Task<TicketResponse?> AssignTicketAsync(int ticketId, int agentId)
         {
             var agent = await _context.Users

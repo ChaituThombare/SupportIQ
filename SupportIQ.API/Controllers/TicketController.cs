@@ -1,9 +1,11 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SupportIQ.Application.DTOs.Tickets;
 using SupportIQ.Application.Interfaces;
+using SupportIQ.Infrastructure.Data;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace SupportIQ.API.Controllers
 {
@@ -156,8 +158,36 @@ namespace SupportIQ.API.Controllers
             }
             return Ok(ticket);
         }
-   
+
         // ADMIN
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admin")]
+        public async Task<IActionResult> GetAdminTickets() {
+            var tickets = await _ticketService.GetAdminTicketsAsync();
+            return Ok(tickets);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admin/agents")]
+        public async Task<IActionResult> GetAdminAgents(
+            [FromServices] SupportIQDbContext context,
+            CancellationToken cancellationToken)
+        {
+            var agents = await context.Users
+                .AsNoTracking()
+                .Where(u => u.IsActive && u.Role.RoleName == "Agent")
+                .OrderBy(u => u.Name)
+                .Select(u => new
+                {
+                    id = u.UserId,
+                    name = u.Name,
+                    email = u.Email
+                })
+                .ToListAsync(cancellationToken);
+
+            return Ok(agents);
+        }
+
         [Authorize(Roles = "Admin")]
         [HttpPost("{id:int}/assign")]
         public async Task<IActionResult> AssignTicket(int id, [FromBody] AssignTicketRequest request)

@@ -18,6 +18,8 @@ namespace SupportIQ.Application.DTOs.Tickets
         public string? CategoryName { get; set; }
         public string Priority { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
+        public int? AssignedAgentId { get; set; }
+        public string? AssignedAgentName { get; set; }
         public bool IsAIClassified { get; set; }
         public DateTime CreatedOn { get; set; }
     }

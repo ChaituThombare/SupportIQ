@@ -1,4 +1,4 @@
-
+<app-admin-navigation></app-admin-navigation>
 <div class="admin-page">
   <div class="page-header">
     <div>
@@ -10,9 +10,28 @@
     <div class="header-actions">
       <span class="live-indicator">
         <span></span>
-        Mock data
+        Live API data
       </span>
     </div>
+  </div>
+
+  <div class="alert alert-danger mx-3" *ngIf="errorMessage">
+    {{ errorMessage }}
+
+    <button 
+      class="btn btn-sm btn-outline-danger ms-2"
+      type="button"
+      (click)="loadTickets(); loadAgents();">
+      Retry
+    </button>
+  </div>
+  
+  <div class="alert alert-warning mx-3" *ngIf="assignmentError">
+    {{ assignmentError}}
+  </div>
+
+  <div class="alert alert-warning mx-3" *ngIf="actionError">
+    {{ actionError }}
   </div>
 
   <!-- Summary cards -->
@@ -20,8 +39,11 @@
     <div class="stat-card">
       <div class="stat-top">
         <span>Total Tickets</span>
-        <div class="stat-icon blue"><i class="bi bi-ticket-perforated"></i></div>
+        <div class="stat-icon blue">
+          <i class="bi bi-ticket-perforated"></i>
+        </div>
       </div>
+      
       <h2>{{ totalTickets }}</h2>
       <p>Tickets in this demo</p>
     </div>
@@ -29,7 +51,9 @@
     <div class="stat-card">
       <div class="stat-top">
         <span>Open Tickets</span>
-        <div class="stat-icon orange"><i class="bi bi-inbox"></i></div>
+        <div class="stat-icon orange">
+          <i class="bi bi-inbox"></i>
+        </div>
       </div>
       <h2>{{ openTickets }}</h2>
       <p>Awaiting active handling</p>
@@ -38,7 +62,9 @@
     <div class="stat-card">
       <div class="stat-top">
         <span>In Progress</span>
-        <div class="stat-icon purple"><i class="bi bi-arrow-repeat"></i></div>
+        <div class="stat-icon purple">
+          <i class="bi bi-arrow-repeat"></i>
+        </div>
       </div>
       <h2>{{ inProgressTickets }}</h2>
       <p>Currently being handled</p>
@@ -47,7 +73,9 @@
     <div class="stat-card">
       <div class="stat-top">
         <span>Resolved / Closed</span>
-        <div class="stat-icon green"><i class="bi bi-check2-circle"></i></div>
+        <div class="stat-icon green">
+          <i class="bi bi-check2-circle"></i>
+        </div>
       </div>
       <h2>{{ resolvedTickets }}</h2>
       <p>Completed tickets</p>
@@ -62,7 +90,15 @@
           <h2>Ticket Management</h2>
           <p>Search, filter and assign support tickets.</p>
         </div>
-        <span class="count-badge">{{ filteredTickets.length }} tickets</span>
+        <span class="count-badge">
+          {{ filteredTickets.length }} tickets
+        </span>
+      </div>
+
+      <div class="p-4 text-secondary" *ngIf="loading">
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true">
+        </span>
+        Loading tickets...
       </div>
 
       <div class="filters">
@@ -95,7 +131,9 @@
         <select [(ngModel)]="assignmentFilter" aria-label="Filter by assignment">
           <option value="All">All agents</option>
           <option value="Unassigned">Unassigned</option>
-          <option *ngFor="let agent of agents" [value]="agent.name">
+          <option 
+            *ngFor="let agent of agents" 
+            [value]="agent.name">
             {{ agent.name }}
           </option>
         </select>
@@ -116,41 +154,83 @@
           <tbody>
             <tr *ngFor="let ticket of filteredTickets; trackBy: trackByTicketId">
               <td>
-                <div class="ticket-id">{{ ticket.id }}</div>
+                <div class="ticket-id">#{{ ticket.id }}</div>
                 <div class="ticket-subject">{{ ticket.subject }}</div>
-                <small class="ticket-date">{{ ticket.createdAt }}</small>
+                <small class="ticket-date">{{ ticket.createdAt | date:'mediumDate' }}</small>
               </td>
 
               <td>{{ ticket.customer }}</td>
 
               <td>
-                <span class="priority-badge" [ngClass]="getPriorityClass(ticket.priority)">
-                  {{ ticket.priority }}
-                </span>
-              </td>
+                <select
+                  class="priority-select"
+                  [ngModel]="ticket.priority"
+                  (ngModelChange)="changeTicketPriority(ticket, $event)"
+                  [disabled]="updatingPriorityTicketId === ticket.id || ticket.status === 'Closed'"
+                  [attr.aria-label]="'Change priority for ticket ' + ticket.id"
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                  <option value="Critical">Critical</option>
+                </select>
 
-              <td>
-                <span class="status-badge" [ngClass]="getStatusClass(ticket.status)">
-                  {{ ticket.status }}
-                </span>
+                <small class="text-secondary d-block mt-1" *ngIf="updatingPriorityTicketId === ticket.id">
+                  Saving...
+                </small>
               </td>
 
               <td>
                 <select
                   class="agent-select"
-                  [ngModel]="ticket.assignedTo"
+                  [ngModel]="ticket.status"
+                  (ngModelChange)="changeTicketStatus(ticket, $event)"
+                  [disabled]="
+                    updatingStatusTicketId === ticket.id ||
+                    ticket.status === 'Closed'
+                  "
+                  [attr.aria-label]="'Change status for ticket ' + ticket.id"
+                >
+                  <option value="Open">Open</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+
+                  <option
+                    value="Closed"
+                    [disabled]="ticket.status !== 'Resolved'"
+                  >
+                    Closed
+                  </option>
+                </select>
+
+                <small
+                  class="text-secondary d-block mt-1"
+                  *ngIf="updatingStatusTicketId === ticket.id"
+                >
+                  Saving...
+                </small>
+              </td>
+
+              <td>
+                <select
+                  class="agent-select"
+                  [ngModel]="agentIdValue(ticket.assignedAgentId)"
                   (ngModelChange)="assignTicket(ticket, $event)"
-                  [attr.aria-label]="'Assign ' + ticket.id"
+                  [disabled]="assigningTicketId === ticket.id || agentsLoading"
+                  [attr.aria-label]="'Assign ticket ' + ticket.id"
                 >
                   <option value="Unassigned">Unassigned</option>
-                  <option *ngFor="let agent of agents" [value]="agent.name">
+                  <option *ngFor="let agent of agents" [value]="agentIdValue(agent.id)">
                     {{ agent.name }}
                   </option>
                 </select>
+                <small class="text-secondary d-block mt-1" *ngIf="assigningTicketId === ticket.id">
+                  Assigning...
+                </small>
               </td>
             </tr>
 
-            <tr *ngIf="filteredTickets.length === 0">
+            <tr *ngIf="filteredTickets.length === 0 && !loading">
               <td colspan="5" class="empty-state">
                 <i class="bi bi-search"></i>
                 <h3>No tickets found</h3>
@@ -171,34 +251,45 @@
       <div class="panel-header">
         <div>
           <h2>Agent Workload</h2>
-          <p>Current demo workload distribution.</p>
+          <p>Active ticket assignments by agent.</p>
         </div>
-        <div class="stat-icon purple"><i class="bi bi-people"></i></div>
+        <div class="stat-icon purple">
+          <i class="bi bi-people"></i>
+        </div>
+      </div>
+
+      <div class="p-3 text-secondary" *ngIf="agentsLoading">
+        <span
+          class="spinner-border spinner-border-sm me-2"
+          role="status"
+          aria-hidden="true"
+        ></span>
+        Loading agents...
       </div>
 
       <div class="unassigned-alert" *ngIf="unassignedTickets > 0">
         <i class="bi bi-exclamation-circle"></i>
         <div>
-          <strong>{{ unassignedTickets }} unassigned ticket</strong>
-          <p>Assign it to an available agent.</p>
+          <strong>{{ unassignedTickets }} unassigned {{ unassignedTickets === 1 ? 'tickets' : 'tickets' }}</strong>
+          <p>Assign tickets to an available agent.</p>
         </div>
       </div>
 
       <div class="agent-list">
-        <div class="agent-item" *ngFor="let agent of getAvailableAgents()">
+        <div class="agent-item" *ngFor="let agent of agents">
           <div class="agent-heading">
             <div class="agent-avatar">
-              {{ agent.name.charAt(0) }}
+              {{ agent.name.charAt(0).toUpperCase() }}
             </div>
 
             <div class="agent-info">
               <strong>{{ agent.name }}</strong>
-              <span>{{ agent.role }}</span>
+              <span>{{ agent.email }}</span>
             </div>
 
             <div class="agent-count">
-              <strong>{{ agent.activeTickets }}</strong>
-              <span>/ {{ agent.capacity }}</span>
+              <strong>{{ getAgentActiveTickets(agent) }}</strong>
+              <span>active</span>
             </div>
           </div>
 
@@ -208,7 +299,7 @@
             [attr.aria-valuenow]="getAgentWorkload(agent)"
             aria-valuemin="0"
             aria-valuemax="100"
-            [attr.aria-label]="agent.name + ' workload'"
+            [attr.aria-label]="agent.name + ' relative workload'"
           >
             <div
               class="progress-bar"
@@ -218,21 +309,30 @@
           </div>
 
           <div class="workload-meta">
-            <span>Workload</span>
+            <span>Relative Workload</span>
             <strong>{{ getAgentWorkload(agent) }}%</strong>
           </div>
         </div>
       </div>
 
+      <div
+        class="empty-state p-3"
+        *ngIf="!agentsLoading && agents.length === 0"
+      >
+        <i class="bi bi-people"></i>
+        <h3>No agents found</h3>
+        <p>Active agents will appear here when available.</p>
+      </div>
+
       <div class="workload-note">
         <i class="bi bi-info-circle"></i>
-        Workload values are illustrative. Live ticket counts will come from the API.
+        Workload is calcualted from active tickets currently laoded from the API. It is a relative indicator, not an agent capacity limit.
       </div>
     </section>
   </div>
 
   <div class="admin-footer">
     <i class="bi bi-shield-check"></i>
-    Admin controls are currently using local mock data. No database changes are made.
+    Admin controls are connected to backend API. Ticket assignments are saved through the assignment endpoint.
   </div>
 </div>

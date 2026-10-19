@@ -598,3 +598,11 @@
     width: 100%;
   }
 }
+
+.legend-active {
+  background: #49b89a;
+}
+
+.active-bar {
+  background: #49b89a;
+}

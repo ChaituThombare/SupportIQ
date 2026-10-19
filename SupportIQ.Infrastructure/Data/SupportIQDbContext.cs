@@ -69,6 +69,11 @@ namespace SupportIQ.Infrastructure.Data
                     .WithMany(r => r.Users)
                     .HasForeignKey(u => u.RoleId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.Property(u => u.Availability)
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasDefaultValue("Available");
             });
 
             // Category

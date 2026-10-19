@@ -19,6 +19,8 @@ namespace SupportIQ.Application.Interfaces
 
         Task<List<TicketResponse>> GetAssignedTicketAsync(int agentId);
 
+        Task<List<TicketResponse>> GetAdminTicketsAsync();
+
         Task<TicketResponse?> AssignTicketAsync(int ticketId, int agentId);
 
         Task<TicketResponse?> GetAssignedTicketByIdAsync(int ticketId, int agentId);

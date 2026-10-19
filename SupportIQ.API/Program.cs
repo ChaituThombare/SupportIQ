@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using Microsoft.OpenApi.Models;
 using SupportIQ.AI;
 using SupportIQ.Application.Interfaces;
@@ -70,6 +72,35 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidateAudience = false,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var principal = context.Principal;
+
+            var userIdClaim =
+                principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+                principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                context.Fail("Invalid token: User ID claim is missing or invalid.");
+                return;
+            }
+
+            var dbContext = context.HttpContext.RequestServices.GetRequiredService<SupportIQDbContext>();
+
+            var isActive = await dbContext.Users
+                .AsNoTracking()
+                .AnyAsync(u => u.UserId == userId && u.IsActive);
+
+            if (!isActive)
+            {
+                context.Fail("User account is inactive");
+            }
+        }
     };
 });
 

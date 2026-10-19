@@ -1,0 +1,58 @@
+<header class="admin-topnav">
+  <!-- Brand -->
+  <a
+    class="admin-brand"
+    routerLink="/admin/workspace"
+    aria-label="SupportIQ Admin Workspace"
+  >
+    <span class="brand-icon">
+      <i class="bi bi-headset"></i>
+    </span>
+
+    <span class="brand-name">
+      Support<span>IQ</span>
+    </span>
+
+    <span class="admin-label">ADMIN</span>
+  </a>
+
+  <!-- Navigation -->
+  <nav class="admin-nav-links" aria-label="Admin navigation">
+    <a
+      routerLink="/admin/workspace"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+    >
+      <i class="bi bi-grid-1x2"></i>
+      <span>Workspace</span>
+    </a>
+
+    <a
+      routerLink="/admin/reports"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+    >
+      <i class="bi bi-graph-up-arrow"></i>
+      <span>Reports</span>
+    </a>
+
+    <a
+      routerLink="/admin/agents"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+    >
+      <i class="bi bi-people"></i>
+      <span>Agent Management</span>
+    </a>
+  </nav>
+
+  <!-- Logout -->
+  <button
+    class="admin-logout"
+    type="button"
+    (click)="logout()"
+  >
+    <i class="bi bi-box-arrow-right"></i>
+    <span>Logout</span>
+  </button>
+</header>
