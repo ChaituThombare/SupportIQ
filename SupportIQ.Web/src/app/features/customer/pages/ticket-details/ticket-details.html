@@ -4,13 +4,13 @@
     Back to Dashboard
   </a>
 
-  @if(loading) {
+  @if (loading) {
     <section class="details-card loading-state" aria-live="polite">
       <i class="bi bi-arrow-repeat loading-icon"></i>
       <h2>Loading ticket details...</h2>
       <p>Please wait while we fetch the ticket information.</p>
     </section>
-  }@else if(errorMessage){
+  } @else if (errorMessage) {
     <section class="details-card not-found" role="alert">
       <i class="bi bi-exclamation-circle"></i>
       <h1>Unable to load ticket</h1>
@@ -19,7 +19,7 @@
         Back to Dashboard
       </a>
     </section>
-  }@else if (ticket; as currentTicket) {
+  } @else if (ticket; as currentTicket) {
     <header class="details-header">
       <div>
         <div class="ticket-reference">{{ currentTicket.id }}</div>
@@ -29,7 +29,9 @@
         </p>
       </div>
 
-      <span class="status-badge" [ngClass]="getStatusClass(currentTicket.status)">
+      <span
+        class="status-badge"
+        [ngClass]="getStatusClass(currentTicket.status)">
         {{ currentTicket.status }}
       </span>
     </header>
@@ -42,21 +44,134 @@
               <i class="bi bi-file-text"></i>
             </div>
             <h2>Ticket Description</h2>
+            
+            <div class="d-flex justify-content-end mb-3">
+              @if(!editingTicket && canEditTicket){
+                <button type="button"
+                        class="btn btn-outline-primary" 
+                        (click)="startEditing()">
+                  <i class="bi bi-pencil me-1"></i>
+                  Edit Ticket
+                </button>
+              }
+            </div>
+
+            @if(!canEditTicket){
+              <p class="text-muted small">
+                This ticket is closed and cannot be edited.
+              </p>
+            }
           </div>
 
-          <p class="description-text">{{ currentTicket.description }}</p>
+          @if(editSuccess){
+            <div class="alert alert-success" role="status">
+              {{ editSuccess }}
+            </div>
+          }
+
+          @if(editingTicket){
+            <form class="ticket-edit-form"
+                  (ngSubmit)="saveTicketEdits()"
+                  novalidate>
+
+                <div class="mb-3">
+                  <label for="editSubject" class="form-label">Subject</label>
+
+                  <input
+                    id="editSubject"
+                    name="editSubject"
+                    type="text"
+                    class="form-control"
+                    [(ngModel)]="editSubject"
+                    maxlength="150"
+                    required
+                    [disabled]="savingTicket" />
+                </div>
+
+                <div class="mb-3">
+                  <label for="editDescription" class="form-label">
+                    Description
+                  </label>
+
+                  <textarea
+                    id="editDescription"
+                    name="editDescription"
+                    class="form-control"
+                    [(ngModel)]="editDescription"
+                    maxlength="5000"
+                    rows="5"
+                    required
+                    [disabled]="savingTicket">
+                  </textarea>
+                </div>
+
+                <div class="mb-3">
+                  <label for="editCategory" class="form-label">
+                    Category
+                  </label>
+
+                  <select
+                    id="editCategory"
+                    name="editCategory"
+                    class="form-select"
+                    [(ngModel)]="editCategoryId"
+                    required
+                    [disabled]="savingTicket">
+
+                    <option [ngValue]="null" disabled>
+                      Select a category
+                    </option>
+
+                    @for (category of categories; track category.id) {
+                      <option [ngValue]="category.id">
+                        {{ category.name }}
+                      </option>
+                    }
+                  </select>
+                </div>
+
+                @if(editError){
+                  <div class="alert alert-danger" role="alert">
+                    {{ editError }}
+                  </div>
+                }
+
+                <div class="d-flex gap-2">
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
+                    [disabled]="savingTicket">
+                    {{ savingTicket ? 'Saving...' : 'Save Changes' }}
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    [disabled]="savingTicket"
+                    (click)="cancelEditing()">
+                    Cancel
+                  </button>
+                </div>
+            </form>
+          } @else {
+            <p class="description-text">
+              {{ currentTicket.description }}
+            </p>
+          }
 
           <div class="ticket-metadata">
             <div>
               <span class="metadata-label">Category</span>
               <strong>{{ currentTicket.category }}</strong>
             </div>
+
             <div>
               <span class="metadata-label">Priority</span>
               <strong [class]="getPriorityClass(currentTicket.priority)">
                 {{ currentTicket.priority }}
               </strong>
             </div>
+
             <div>
               <span class="metadata-label">Last Updated</span>
               <strong>{{ currentTicket.updatedAt }}</strong>
@@ -74,11 +189,13 @@
               <p>Messages associated with this support ticket.</p>
             </div>
           </div>
-          
-          @if(loadingMessages){
+
+          @if (loadingMessages) {
             <p>Loading conversation...</p>
-          }@else if (messageError) {
-            <p class="message-error" role="alert">{{ messageError }}</p>
+          } @else if (messageError) {
+            <p class="message-error" role="alert">
+              {{ messageError }}
+            </p>
           } @else if (messages.length === 0) {
             <p class="empty-conversation">
               No messages yet. Send a reply to start the conversation.
@@ -87,16 +204,27 @@
             <div class="conversation-list">
               @for (message of messages; track message.messageId) {
                 <article class="message-item">
-                  <div class="message-avatar" [class.agent-avatar]="message.senderType !== 'Customer'">
-                    {{ message.senderType.charAt(0) }}
+                  <div
+                    class="message-avatar"
+                    [class.agent-avatar]="message.senderType !== 'Customer'">
+                    {{ message.senderType === 'Customer'
+                      ? 'Y'
+                      : (message.senderName || 'S').charAt(0) }}
                   </div>
 
                   <div class="message-content">
                     <div class="message-header">
-                      <strong>{{ message.senderType }}</strong>
+                      <strong>
+                        {{
+                          message.senderType === 'Customer'
+                            ? 'You'
+                            : (message.senderName || 'Support Team')
+                        }}
+                      </strong>
+
                       <time>{{ message.createdOn | date:'medium' }}</time>
                     </div>
-                    
+
                     <p>{{ message.messageText }}</p>
                   </div>
                 </article>
@@ -107,6 +235,7 @@
           @if (ticket?.status?.toLowerCase() !== 'closed') {
             <form class="reply-form" (ngSubmit)="sendReply()">
               <label for="replyMessage">Your reply</label>
+
               <textarea
                 id="replyMessage"
                 name="replyMessage"
@@ -174,9 +303,7 @@
     <section class="details-card not-found">
       <i class="bi bi-ticket-perforated"></i>
       <h1>Ticket not found</h1>
-      <p>
-        No demo ticket matches ID {{ ticketId }}.
-      </p>
+      <p>No ticket matches ID {{ ticketId }}.</p>
       <a routerLink="/customer/dashboard" class="dashboard-link">
         Back to Dashboard
       </a>

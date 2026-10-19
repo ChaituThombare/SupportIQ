@@ -84,7 +84,8 @@
             @for (message of messages; track $index) {
               <article class="conversation-message">
                 <div class="message-avatar"
-                     [class.agent-avatar]="message.role === 'Agent'">
+                     [class.agent-avatar]="message.role === 'Agent'"
+                     [class.ai-message-avatar]="message.role === 'AI Suggestion'">
                   {{ message.sender.charAt(0) }}
                 </div>
 

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using SupportIQ.Infrastructure.Data;
 using SupportIQ.Domain.Entities;
 using SupportIQ.Application.DTOs.Tickets;
+using Microsoft.IdentityModel.Tokens.Experimental;
 
 namespace SupportIQ.Infrastructure.Services
 {
@@ -60,22 +61,16 @@ namespace SupportIQ.Infrastructure.Services
 
             try
             {
-                await _aiTicketService.AnalyzeTicketAsync(ticket.TicketId);
+                using var aiTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+                await _aiTicketService.AnalyzeTicketAsync(ticket.TicketId, aiTimeout.Token);
             }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch(HttpRequestException ex)
-            {
-                _logger.LogWarning(ex, "AI provider unavailable for ticket {TicketId}. Ticket creation succeeded.", ticket.TicketId);
-            }
-            catch(InvalidOperationException ex) 
+            catch (Exception ex)
             {
                 _logger.LogWarning(
                     ex,
-                    "AI analysis failed for ticket {TicketId}. " +
-                    "The ticket was created successfully.",
+                    "AI Analysis failed or time out for ticket {TicketId}. " +
+                    "Ticket Creation succeessed; manual triage is reuired.",
                     ticket.TicketId);
             }
 
@@ -152,7 +147,7 @@ namespace SupportIQ.Infrastructure.Services
             return await _context.Tickets
                 .AsNoTracking()
                 .Where(t => t.AssignedAgentId == agentId)
-                .OrderByDescending(t => t.UpdatedOn ??  t.CreatedOn)
+                .OrderByDescending(t => t.UpdatedOn ?? t.CreatedOn)
                 .Select(t => new TicketResponse
                 {
                     TicketId = t.TicketId,
@@ -202,12 +197,12 @@ namespace SupportIQ.Infrastructure.Services
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.UserId == agentId && u.IsActive && u.Role.RoleName == "Agent");
 
-            if(agent is null)
+            if (agent is null)
             {
                 throw new InvalidOperationException("Agent not found.");
             }
 
-            if(string.Equals(agent.Availability, "Away", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(agent.Availability, "Away", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("THis agent is amrked Away and cannot receive new tickets.");
             }
@@ -215,12 +210,12 @@ namespace SupportIQ.Infrastructure.Services
             var ticket = await _context.Tickets
                 .FirstOrDefaultAsync(t => t.TicketId == ticketId);
 
-            if(ticket is null)
+            if (ticket is null)
             {
                 return null;
             }
 
-            if(ticket.Status is "Resolved" or "Closed")
+            if (ticket.Status is "Resolved" or "Closed")
             {
                 throw new InvalidOperationException("Ticket is already resolved or closed.");
             }
@@ -236,14 +231,14 @@ namespace SupportIQ.Infrastructure.Services
         public async Task<TicketResponse?> UnassignTicketAsync(int ticketId)
         {
             var ticket = await _context.Tickets
-                .FirstOrDefaultAsync(t => t.TicketId == ticketId);  
+                .FirstOrDefaultAsync(t => t.TicketId == ticketId);
 
-            if(ticket is null)
+            if (ticket is null)
             {
                 return null;
             }
 
-            if(ticket.Status is "Resolved" or "Closed")
+            if (ticket.Status is "Resolved" or "Closed")
             {
                 throw new InvalidOperationException("Ticket is already resolved or closed.");
             }
@@ -292,7 +287,8 @@ namespace SupportIQ.Infrastructure.Services
                 Priority = ticket.Priority,
                 Status = ticket.Status,
                 IsAIClassified = ticket.IsAIClassified,
-                CreatedOn = ticket.CreatedOn
+                CreatedOn = ticket.CreatedOn,
+                UpdatedOn = ticket.UpdatedOn
             };
         }
 
@@ -303,30 +299,30 @@ namespace SupportIQ.Infrastructure.Services
                 "Open", "InProgress", "Resolved", "Closed"
             };
 
-            if(!allowedStatuses.Contains(status))
+            if (!allowedStatuses.Contains(status))
             {
                 throw new ArgumentException("Invalid ticket status.");
             }
 
             var ticket = await _context.Tickets
                 .FirstOrDefaultAsync(t => t.TicketId == ticketId);
-            
+
             if (ticket == null)
             {
                 return null;
             }
-            
-            if(!isAdmin && ticket.AssignedAgentId != userId)
+
+            if (!isAdmin && ticket.AssignedAgentId != userId)
             {
                 throw new UnauthorizedAccessException("You can update only tickets assigned to you.");
             }
 
-            if(status == "Closed" && ticket.Status != "Resolved")
+            if (status == "Closed" && ticket.Status != "Resolved")
             {
                 throw new InvalidOperationException("Ticket can only be closed if it is resolved.");
             }
 
-            if(ticket.Status == "Closed" && status != "Closed")
+            if (ticket.Status == "Closed" && status != "Closed")
             {
                 throw new InvalidOperationException("Closed tickets cannot be updated.");
             }
@@ -334,7 +330,7 @@ namespace SupportIQ.Infrastructure.Services
             ticket.Status = status;
             ticket.UpdatedOn = DateTime.Now;
 
-            if(status == "Resolved")
+            if (status == "Resolved")
             {
                 ticket.ResolvedOn = DateTime.Now;
             }
@@ -376,6 +372,69 @@ namespace SupportIQ.Infrastructure.Services
 
             ticket.Priority = priority;
             ticket.UpdatedOn = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+
+            return MapToResponse(ticket);
+        }
+
+        public async Task<TicketResponse?> UpdateMyTicketAsync(int ticketId, int customerId, UpdateTicketRequest request)
+        {
+            var ticket = await _context.Tickets
+                .FirstOrDefaultAsync(t => t.TicketId == ticketId && t.CustomerId == customerId);
+
+            if (ticket == null)
+            {
+                return null;
+            }
+
+            if (ticket.Status != "Open")
+            {
+                throw new InvalidOperationException("Closed tickets cannot be updated.");
+            }
+
+            var subject = request.Subject?.Trim();
+            var description = request.Description?.Trim();
+
+            if (string.IsNullOrWhiteSpace(subject) || subject.Length < 3 || subject.Length > 150)
+            {
+                throw new ArgumentException("Subject must be between 3 and 150 characters.");
+            }
+
+            if (string.IsNullOrWhiteSpace(description) || description.Length < 5 || description.Length > 5000)
+            {
+                throw new ArgumentException("Description must be between 5 and 5000 characters.");
+            }
+
+            var categoryExists = await _context.Categories
+                .AnyAsync(c =>
+                    c.CategoryId == request.CategoryId &&
+                    c.IsActive);
+
+            if (!categoryExists)
+            {
+                throw new InvalidOperationException("Selected category does not found or is inactive.");
+
+            }
+            ticket.Subject = subject;
+            ticket.Description = description;
+            ticket.CategoryId = request.CategoryId;
+            ticket.UpdatedOn = DateTime.Now;
+
+            if (ticket.IsAIClassified)
+            {
+                ticket.Priority = "Low";
+            }
+            ticket.IsAIClassified = false;
+
+            var oldSuggestions = await _context.Messages
+                .Where(m =>
+                    m.TicketId == ticketId &&
+                    m.IsAISuggested &&
+                    m.SenderType == "AI")
+                .ToListAsync();
+
+            _context.Messages.RemoveRange(oldSuggestions);
 
             await _context.SaveChangesAsync();
 

@@ -31,5 +31,10 @@ namespace SupportIQ.Application.Interfaces
         Task<TicketResponse?> UpdateTicketPriorityAsync(int ticketId, string priority, int userId, bool isAdmin);
 
         Task<TicketResponse?> UnassignTicketAsync(int ticketId);
+
+        Task<TicketResponse?> UpdateMyTicketAsync(
+            int ticketId,
+            int customerId,
+            UpdateTicketRequest request);
     }
 }

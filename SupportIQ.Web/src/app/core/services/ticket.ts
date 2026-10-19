@@ -3,6 +3,12 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
+export interface UpdateTicketRequest {
+  subject: string;
+  description: string;
+  categoryId: number;
+}
+
 export interface TicketResponse {
   ticketId: number;
   customerId: number;
@@ -161,6 +167,13 @@ export class TicketService {
   unassignTicket(ticketId: number): Observable<TicketResponse> {
     return this.http.delete<TicketResponse>(
       `${this.baseUrl}/${ticketId}/assign`
+    );
+  }
+
+  updateMyTicket(id: number, request: UpdateTicketRequest): Observable<TicketResponse> {
+    return this.http.put<TicketResponse>(
+      `${this.baseUrl}/${id}`,
+      request
     );
   }
 }

@@ -104,6 +104,55 @@ namespace SupportIQ.API.Controllers
             return Ok(ticket);
         }
 
+        [Authorize(Roles = "Customer")]
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> UpdateMyTicket(
+    int id,
+    [FromBody] UpdateTicketRequest request)
+        {
+            var customerId = GetCurrentUserId();
+
+            if (customerId is null)
+            {
+                return Unauthorized(new
+                {
+                    message = "Invalid user identity."
+                });
+            }
+
+            try
+            {
+                var ticket = await _ticketService.UpdateMyTicketAsync(
+                    id,
+                    customerId.Value,
+                    request);
+
+                if (ticket is null)
+                {
+                    return NotFound(new
+                    {
+                        message = "Ticket not found."
+                    });
+                }
+
+                return Ok(ticket);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
+
         // AGENT
         [Authorize(Roles = "Agent")]
         [HttpGet("queue")]

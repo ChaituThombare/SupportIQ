@@ -48,7 +48,7 @@ namespace SupportIQ.Infrastructure.Services
                     MessageId = m.MessageId,
                     TicketId = m.TicketId,
                     SenderId = m.SenderId,
-                    SenderName = m.Sender.Name,
+                    SenderName = m.IsAISuggested || m.SenderType == "AI" ? "SupportIQ AI" : m.Sender.Name,
                     SenderType = m.SenderType,
                     MessageText = m.MessageText,
                     IsAISuggested = m.IsAISuggested,
@@ -111,15 +111,17 @@ namespace SupportIQ.Infrastructure.Services
 
             await _context.SaveChangesAsync();
 
+            var senderName = await _context.Users
+                .Where(u => u.UserId == userId)
+                .Select(u => u.Name)
+                .FirstOrDefaultAsync();
+
             return new MessageResponse
             {
                 MessageId = message.MessageId,
                 TicketId = message.TicketId,
                 SenderId = message.SenderId,
-                SenderName = (await _context.Users
-                    .Where(u => u.UserId == message.SenderId)
-                    .Select(u => u.Name)
-                    .FirstOrDefaultAsync()) ?? message.SenderType,
+                SenderName = senderName ?? message.SenderType,
                 SenderType = message.SenderType,
                 MessageText = message.MessageText,
                 IsAISuggested = message.IsAISuggested,

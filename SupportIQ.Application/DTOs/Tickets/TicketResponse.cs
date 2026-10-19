@@ -22,5 +22,6 @@ namespace SupportIQ.Application.DTOs.Tickets
         public string? AssignedAgentName { get; set; }
         public bool IsAIClassified { get; set; }
         public DateTime CreatedOn { get; set; }
+        public DateTime? UpdatedOn { get; set; }
     }
 }

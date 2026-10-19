@@ -1,4 +1,3 @@
-
 import {
   Component,
   ChangeDetectorRef,
@@ -9,6 +8,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
+
 import {
   TicketService,
   TicketResponse,
@@ -17,9 +17,17 @@ import {
 
 type AgentStatus = 'Open' | 'In Progress' | 'Resolved' | 'Closed';
 
+type MessageRole =
+  | 'Customer'
+  | 'Agent'
+  | 'Admin'
+  | 'AI Suggestion'
+  | 'AI'
+  | 'Support';
+
 interface WorkspaceMessage {
   sender: string;
-  role: 'Customer' | 'Agent';
+  role: MessageRole;
   message: string;
   time: string;
 }
@@ -61,7 +69,6 @@ export class TicketWorkspace implements OnInit {
   loadingMessages = false;
   sendingReply = false;
   updatingStatus = false;
-
   generatingDraft = false;
 
   ngOnInit(): void {
@@ -104,10 +111,10 @@ export class TicketWorkspace implements OnInit {
     return {
       id: `#${ticket.ticketId}`,
       subject: ticket.subject,
-      customer: ticket.customerName ||  `Customer #${ticket.customerId}`,
+      customer: ticket.customerName || `Customer #${ticket.customerId}`,
       email: ticket.customerEmail || 'N/A',
-      category: ticket.categoryName || (ticket.categoryId ? 
-         `Category #${ticket.categoryId}` : 'Uncategorized'),
+      category: ticket.categoryName ||
+        (ticket.categoryId ? `Category #${ticket.categoryId}` : 'Uncategorized'),
       priority: ticket.priority,
       status: this.toDisplayStatus(ticket.status),
       createdAt: new Date(ticket.createdOn).toLocaleString(),
@@ -155,18 +162,54 @@ export class TicketWorkspace implements OnInit {
   }
 
   private mapMessage(message: TicketMessage): WorkspaceMessage {
-    const senderType = message.senderType.toLowerCase();
+    const senderType = (message.senderType ?? '')
+      .trim()
+      .toLowerCase();
+
+    const isAISuggestion =
+      message.isAISuggested || senderType === 'ai';
+
+    let role: MessageRole;
+
+    switch (senderType) {
+      case 'customer':
+        role = 'Customer';
+        break;
+
+      case 'agent':
+        role = 'Agent';
+        break;
+
+      case 'admin':
+        role = 'Admin';
+        break;
+
+      case 'ai':
+        role = isAISuggestion ? 'AI Suggestion' : 'AI';
+        break;
+
+      default:
+        role = 'Support';
+        break;
+    }
 
     return {
-      sender: message.senderName || `${message.senderType} #${message.senderId}`,
-      role: senderType === 'customer' ? 'Customer' : 'Agent',
+      // AI drafts must not appear under the customer's name.
+      sender: isAISuggestion
+        ? 'SupportIQ AI'
+        : message.senderName ||
+          `${message.senderType || 'Support'} #${message.senderId}`,
+
+      role,
       message: message.messageText,
       time: new Date(message.createdOn).toLocaleString()
     };
   }
 
   generateDemoDraft(): void {
-    if (!this.ticket || this.generatingDraft) return;
+    if (!this.ticket || this.generatingDraft) {
+      return;
+    }
 
     this.generatingDraft = true;
     this.feedbackMessage = '';
@@ -179,7 +222,12 @@ export class TicketWorkspace implements OnInit {
       .subscribe({
         next: response => {
           this.draftReply = response.suggestedResponse;
-          this.showFeedback('AI-generated draft loaded. Review before sending.', 'success');
+          this.loadMessages();
+          
+          this.showFeedback(
+            'AI-generated draft loaded. Review before sending.',
+            'success'
+          );
         },
         error: error => {
           this.showFeedback(
@@ -212,7 +260,10 @@ export class TicketWorkspace implements OnInit {
             this.selectedStatus = this.ticket.status;
           }
 
-          this.showFeedback('Ticket status saved successfully.', 'success');
+          this.showFeedback(
+            'Ticket status saved successfully.',
+            'success'
+          );
         },
         error: error => {
           this.showFeedback(
@@ -231,7 +282,9 @@ export class TicketWorkspace implements OnInit {
       return;
     }
 
-    if (this.sendingReply) return;
+    if (this.sendingReply) {
+      return;
+    }
 
     this.sendingReply = true;
 
@@ -242,7 +295,11 @@ export class TicketWorkspace implements OnInit {
       }))
       .subscribe({
         next: response => {
-          this.messages = [...this.messages, this.mapMessage(response)];
+          this.messages = [
+            ...this.messages,
+            this.mapMessage(response)
+          ];
+
           this.draftReply = '';
           this.showFeedback('Reply sent successfully.', 'success');
         },

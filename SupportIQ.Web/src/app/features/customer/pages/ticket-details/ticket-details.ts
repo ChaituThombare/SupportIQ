@@ -60,6 +60,16 @@ export class TicketDetails implements OnInit {
   sendingMessage = false;
   messageError = '';
 
+  editingTicket = false;
+  savingTicket = false;
+
+  editSubject = '';
+  editDescription = '';
+  editCategoryId: number | null = null;
+
+  editError = '';
+  editSuccess = '';
+
   ngOnInit(): void {
     this.ticketId = this.route.snapshot.paramMap.get('id') ?? '';
 
@@ -289,5 +299,107 @@ export class TicketDetails implements OnInit {
           this.cdr.detectChanges();
         }
       });
+  }
+
+  startEditing(): void {
+    if (
+      !this.rawTicket ||
+      this.ticket?.status.toLowerCase() !== 'open'
+    ) {
+      return;
+    }
+
+    this.editSubject = this.rawTicket.subject;
+    this.editDescription = this.rawTicket.description;
+    this.editCategoryId = this.rawTicket.categoryId;
+
+    this.editError = '';
+    this.editSuccess = '';
+    this.editingTicket = true;
+  }
+
+  cancelEditing(): void {
+    this.editingTicket = false;
+    this.editError = '';
+  }
+
+  saveTicketEdits(): void {
+    const subject = this.editSubject.trim();
+    const description = this.editDescription.trim();
+    const categoryId = this.editCategoryId;
+
+    const numericId = Number(
+      this.ticketId.replace(/^SUP-/i, '')
+    );
+
+    if (
+      this.savingTicket ||
+      !Number.isSafeInteger(numericId) ||
+      numericId <= 0
+    ) {
+      return;
+    }
+
+    if (subject.length < 3 || subject.length > 150) {
+      this.editError =
+        'Subject must contain between 3 and 150 characters.';
+      return;
+    }
+
+    if (description.length < 5 || description.length > 5000) {
+      this.editError =
+        'Description must contain between 5 and 5000 characters. Current length: ' + description.length;
+      return;
+    }
+
+    if (
+      categoryId === null ||
+      !Number.isSafeInteger(categoryId) ||
+      categoryId <= 0
+    ) {
+      this.editError = 'Please select a category.';
+      return;
+    }
+
+    this.savingTicket = true;
+    this.editError = '';
+    this.editSuccess = '';
+
+    this.ticketService.updateMyTicket(numericId, {
+      subject: subject.trim(),
+      description,
+      categoryId
+    })
+      .pipe(
+        finalize(() => {
+          this.savingTicket = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: response => {
+          this.rawTicket = response;
+          this.ticket = this.mapTicket(response);
+
+          this.editingTicket = false;
+          this.editSuccess =
+            'Ticket updated. Previous AI classification and draft cleared.';
+
+          this.loadMessages(numericId);
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          this.editError =
+            error.error?.message ??
+            'Unable to update ticket. Refresh and try again.';
+
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  get canEditTicket(): boolean {
+    const status = (this.rawTicket?.status ?? this.ticket?.status ?? '').replace(/\s+/g, '').toLowerCase();
+    return status === 'open';
   }
 }
