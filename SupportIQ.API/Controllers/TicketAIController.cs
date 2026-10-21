@@ -160,8 +160,9 @@ namespace SupportIQ.API.Controllers
                     HttpStatusCode.TooManyRequests =>
                         (
                             StatusCodes.Status429TooManyRequests,
-                            "Gemini rate limit or quota reached. Check your " +
-                            "Gemini API usage and try again later."
+                            "Gemini rejected the request because a model or project rate " +
+                            "limit was reached. Wait for the limit to reset, reduce " +
+                            "AI requests, or enable billing to raise your limits."
                         ),
 
                     HttpStatusCode.RequestTimeout =>

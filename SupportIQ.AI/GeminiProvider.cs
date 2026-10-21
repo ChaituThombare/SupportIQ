@@ -198,14 +198,13 @@ namespace SupportIQ.AI
 
                     var isTransient =
                         statusCode == HttpStatusCode.RequestTimeout ||
-                        statusNumber == 429 ||
                         statusNumber >= 500;
 
                     if (isTransient && attempt < maxAttempts)
                     {
                         response.Dispose();
 
-                        // Exponential backoff: 1 second, then 2 seconds.
+                        // Retry transient timeouts and server errors with exponential backoff.
                         await Task.Delay(
                             TimeSpan.FromSeconds(
                                 Math.Pow(2, attempt - 1)),
