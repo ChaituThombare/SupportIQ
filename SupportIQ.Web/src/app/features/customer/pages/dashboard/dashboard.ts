@@ -60,14 +60,9 @@ export class CustomerDashboard implements OnInit {
           this.tickets = response.map(ticket => this.mapTicket(ticket));
           this.loading = false;
 
-          console.log('Tickets loaded:', this.tickets.length);
-          console.log('Loading state:', this.loading);
-
           this.cdr.detectChanges();
         },
         error: error => {
-          console.error('Ticket API Error:', error);
-  
           this.errorMessage = `Could not load tickets (${error.status || 'network error'}).`;
           this.loading = false;
           this.cdr.detectChanges();

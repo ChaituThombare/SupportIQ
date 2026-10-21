@@ -24,6 +24,19 @@ namespace SupportIQ.Infrastructure.Services
 
         public async Task<TicketResponse> CreateTicketAsync(CreateTicketRequest request, int customerId)
         {
+            var subject = request.Subject?.Trim();
+            var description = request.Description?.Trim();
+
+            if (string.IsNullOrWhiteSpace(subject) || subject.Length < 3 || subject.Length > 150)
+            {
+                throw new ArgumentException("Subject must be between 3 and 150 characters.");
+            }
+
+            if (string.IsNullOrWhiteSpace(description) || description.Length < 5 || description.Length > 5000)
+            {
+                throw new ArgumentException("Description must be between 5 and 5000 characters.");
+            }
+
             var customerExists = await _context.Users
                 .AnyAsync(u => u.UserId == customerId && u.IsActive && u.Role.RoleName == "Customer");
 
@@ -46,8 +59,8 @@ namespace SupportIQ.Infrastructure.Services
             var ticket = new Ticket
             {
                 CustomerId = customerId,
-                Subject = request.Subject,
-                Description = request.Description,
+                Subject = subject,
+                Description = description,
                 CategoryId = request.CategoryId,
                 Priority = "Low",
                 Status = "Open",
@@ -288,7 +301,8 @@ namespace SupportIQ.Infrastructure.Services
                 Status = ticket.Status,
                 IsAIClassified = ticket.IsAIClassified,
                 CreatedOn = ticket.CreatedOn,
-                UpdatedOn = ticket.UpdatedOn
+                UpdatedOn = ticket.UpdatedOn,
+                AssignedAgentId = ticket.AssignedAgentId
             };
         }
 

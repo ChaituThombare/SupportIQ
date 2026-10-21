@@ -24,7 +24,7 @@ namespace SupportIQ.AI
             string description,
             CancellationToken cancellationToken = default)
         {
-            var apiKey = _configuration["AI:ApiKey"];
+            var apiKey = _configuration["AI:ApiKey"]?.Trim();
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
@@ -32,11 +32,11 @@ namespace SupportIQ.AI
                     "Gemini API key is not configured. Set AI:ApiKey using User Secrets or an environment variable.");
             }
 
-            var model = _configuration["AI:Model"];
+            var model = _configuration["AI:Model"]?.Trim();
 
             if (string.IsNullOrWhiteSpace(model))
             {
-                model = "gemini-3.8-flash";
+                model = "gemini-3.6-flash";
             }
 
             var url =

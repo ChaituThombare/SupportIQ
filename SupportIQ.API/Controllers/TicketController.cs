@@ -57,6 +57,13 @@ namespace SupportIQ.API.Controllers
                     message = ex.Message
                 });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
         }
 
         [Authorize(Roles = "Customer")]

@@ -130,15 +130,31 @@ namespace SupportIQ.API.Controllers
 
                 var (httpStatus, clientMessage) = ex.StatusCode switch
                 {
-                    HttpStatusCode.BadRequest or
-                    HttpStatusCode.Unauthorized or
-                    HttpStatusCode.Forbidden or
+                    HttpStatusCode.Unauthorized =>
+                        (
+                            StatusCodes.Status502BadGateway,
+                            "Google rejected AI:ApiKey as invalid. Replace it " +
+                            "with a valid Gemini API key and restart the API."
+                        ),
+
+                    HttpStatusCode.Forbidden =>
+                        (
+                            StatusCodes.Status502BadGateway,
+                            "Google denied this API key access to Gemini. Check " +
+                            "Gemini API access and the key's restrictions."
+                        ),
+
                     HttpStatusCode.NotFound =>
                         (
                             StatusCodes.Status502BadGateway,
-                            "Gemini rejected the request. Check the AI:ApiKey " +
-                            "configuration, key restrictions, and AI:Model. " +
-                            "See backend logs for details."
+                            "Gemini could not find the configured model. Check AI:Model."
+                        ),
+
+                    HttpStatusCode.BadRequest =>
+                        (
+                            StatusCodes.Status502BadGateway,
+                            "Gemini rejected the request. Check the request format " +
+                            "and configured model. See backend logs for details."
                         ),
 
                     HttpStatusCode.TooManyRequests =>

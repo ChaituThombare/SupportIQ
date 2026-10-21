@@ -107,9 +107,6 @@ export class Auth {
       .pipe(finalize(() => this.loading = false))
       .subscribe({
         next: response => {
-          console.log('LOGIN RESPONSE:', response);
-          console.log('USER ROLE:', response.role);
-
           const role = response.role.trim().toLowerCase();
 
           const destination: Record<string, string> = {
@@ -127,14 +124,11 @@ export class Auth {
           }
 
           this.router.navigateByUrl(route).then(success => {
-            console.log('NAVIGATION SUCCESS:', success);
-
             if(!success){
               this.messageType = 'error';
               this.message = `Login succeeded, but navigation to "${route}" failed.`;
             }
-          }).catch(error => {
-            console.error('NAVIGATION ERROR:', error);
+          }).catch(() => {
             this.messageType = 'error';
             this.message = `Login succeeded, but the next page could not be opened.`;
           });

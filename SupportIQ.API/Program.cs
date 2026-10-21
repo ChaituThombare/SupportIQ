@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.OpenApi.Models;
 using SupportIQ.AI;
 using SupportIQ.Application.Interfaces;

@@ -12,10 +12,10 @@ import { CategoryService, Category } from '../../../../core/services/category';
   templateUrl: './create-ticket.html',
 })
 export class CreateTicket implements OnInit {
-  private readonly formBuilder = new FormBuilder();
-  private readonly ticketService = new TicketService();
-  private readonly router = new Router();
-  private readonly categoryService = new CategoryService();
+  private readonly formBuilder = inject(FormBuilder);
+  private readonly ticketService = inject(TicketService);
+  private readonly router = inject(Router);
+  private readonly categoryService = inject(CategoryService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   submitted = false;

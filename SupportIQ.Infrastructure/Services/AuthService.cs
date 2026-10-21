@@ -27,7 +27,8 @@ namespace SupportIQ.Infrastructure.Services
 
         public async Task<bool> RegisterAsync(RegisterRequest request)
         {
-            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            var email = request.Email.Trim().ToLowerInvariant();
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
             if(existingUser != null)
             {
@@ -36,8 +37,8 @@ namespace SupportIQ.Infrastructure.Services
 
             var user = new User
             {
-                Name = request.Name,
-                Email = request.Email,
+                Name = request.Name.Trim(),
+                Email = email,
                 RoleId = 1,
                 IsActive = true,
                 CreatedOn = DateTime.Now
@@ -47,16 +48,30 @@ namespace SupportIQ.Infrastructure.Services
 
             _context.Users.Add(user);
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Close the race between the existence check and the unique email index.
+                if (await _context.Users.AsNoTracking().AnyAsync(u => u.Email == email))
+                {
+                    return false;
+                }
+
+                throw;
+            }
 
             return true;
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
         {
+            var email = request.Email.Trim().ToLowerInvariant();
             var user = await _context.Users
                 .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Email == request.Email);
+                .FirstOrDefaultAsync(u => u.Email == email);
             if(user == null || !user.IsActive)
             {
                 return null;
